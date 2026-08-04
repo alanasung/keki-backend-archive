@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "pipelineVersion": "0.3.2",
+  "visionPath": "docs/vision.md",
+  "requireApprovalBeforeBuild": true,
+  "agent": { "command": "claude", "args": ["-p", "--model", "sonnet"] },
+  "validatorAgent": { "command": "codex", "args": ["exec", "--model", "gpt-sol"] },
+  "models": {
+    "author": "claude-code/opus",
+    "validator": "gpt-sol"
+  },
+  "verify": {
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
+  },
+  "contextDocs": ["docs/vision.md"]
+}

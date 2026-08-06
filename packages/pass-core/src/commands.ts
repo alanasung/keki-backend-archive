@@ -6,28 +6,28 @@
 import { NotImplementedInPhase1 } from '@keki/contracts';
 import type { HouseholdId, LedgerReason, PlayPassId, ReservationId } from '@keki/contracts';
 
-export async function redeemCredits(input: {
+export function redeemCredits(input: {
   playPassId: PlayPassId;
   credits: number;
   reservationId: ReservationId;
 }): Promise<{ balance: number }> {
   void input;
-  throw new NotImplementedInPhase1('redeemCredits');
+  return Promise.reject(new NotImplementedInPhase1('redeemCredits'));
 }
 
-export async function issuePass(input: {
+export function issuePass(input: {
   householdId: HouseholdId;
   totalCredits: number;
   expiresAt: Date | null;
 }): Promise<{ playPassId: PlayPassId }> {
   void input;
-  throw new NotImplementedInPhase1('issuePass');
+  return Promise.reject(new NotImplementedInPhase1('issuePass'));
 }
 
-export async function expirePass(input: {
+export function expirePass(input: {
   playPassId: PlayPassId;
   reason: LedgerReason;
 }): Promise<{ balance: number }> {
   void input;
-  throw new NotImplementedInPhase1('expirePass');
+  return Promise.reject(new NotImplementedInPhase1('expirePass'));
 }

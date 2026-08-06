@@ -1,4 +1,5 @@
 import type { CustomerId, HouseholdId, Role } from '@keki/contracts';
+import { InvalidTokenError } from './errors';
 import { findProfileByCognitoSub } from './profile';
 import { verifyToken } from './verify-token';
 
@@ -32,7 +33,20 @@ export async function resolveSession(jwt: string | null): Promise<SessionResult>
     return { kind: 'anonymous' };
   }
 
-  const verified = await verifyToken(jwt);
+  let verified;
+  try {
+    verified = await verifyToken(jwt);
+  } catch (error) {
+    // An expired, malformed, or otherwise invalid token is an ordinary
+    // condition (the cookie outlived the session), not a server error.
+    // Only InvalidTokenError is swallowed here; a misconfiguration
+    // (AuthConfigError) must still surface as a genuine failure.
+    if (error instanceof InvalidTokenError) {
+      return { kind: 'anonymous' };
+    }
+    throw error;
+  }
+
   const profile = await findProfileByCognitoSub(verified.sub);
 
   if (profile === null) {

@@ -13,6 +13,7 @@ node_modules/
 # Build artifacts
 dist/
 *.tsbuildinfo
+next-env.d.ts
 
 # Env
 .env
@@ -22,6 +23,12 @@ dist/
 coverage/
 playwright-report/
 test-results/
+
+# Generated once per machine by apps/web/e2e/fixtures/jwks-server.ts: the
+# RSA signing key and the self-signed TLS certificate/key the local JWKS
+# server uses. Must stay out of version control (private key material) and
+# must stay stable across a single run (signer and server have to agree).
+apps/web/e2e/.e2e-keys/
 
 # Local agent settings (personal, not shared)
 .claude/settings.local.json

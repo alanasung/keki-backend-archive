@@ -139,21 +139,22 @@ establishes them.
 
 ### Dependency Versions (pin these)
 
-Exact versions are pinned by the scaffold's `pnpm-lock.yaml`; the constraints
-below are the intended major versions. Fill the exact column when the lockfile
-lands.
+Exact versions are pinned by the scaffold's `pnpm-lock.yaml`; the table below
+holds the resolved versions as of that lockfile. When a version drifts,
+`pnpm-lock.yaml` is the source of truth — update this table to match it, not
+the other way around.
 
-| Package                  | Version                      |
-| ------------------------ | ---------------------------- |
-| next                     | 15.x                         |
-| react / react-dom        | matching Next 15 requirement |
-| typescript               | 5.x                          |
-| pnpm                     | 9.x (workspace)              |
-| sst                      | 3.x                          |
-| @opennextjs/aws          | 3.x                          |
-| drizzle-orm              | latest 0.x                   |
-| drizzle-kit              | matching drizzle-orm         |
-| @neondatabase/serverless | latest                       |
-| tailwindcss              | 4.x                          |
-| vitest                   | 3.x                          |
-| @playwright/test         | 1.x                          |
+| Package                  | Version                                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------------- |
+| next                     | 15.5.22                                                                                             |
+| react / react-dom        | 19.2.8                                                                                              |
+| typescript               | 5.9.3                                                                                                |
+| pnpm                     | 9.15.9 (workspace, see `package.json` `packageManager`)                                             |
+| sst                      | 3.19.3                                                                                               |
+| @opennextjs/aws          | not a direct dependency — `sst.aws.Nextjs` bundles OpenNext internally, with no separate version to pin |
+| drizzle-orm              | 0.45.2                                                                                               |
+| drizzle-kit              | 0.31.10                                                                                              |
+| @neondatabase/serverless | 1.1.0                                                                                                |
+| tailwindcss              | 4.3.3                                                                                                |
+| vitest                   | 3.2.7                                                                                                |
+| @playwright/test         | 1.62.1                                                                                               |

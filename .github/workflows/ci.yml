@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Shared by every step, not only the `webServer` Playwright spawns for e2e:
+# `next build` (the "build" step below) imports `@keki/auth` and
+# `@keki/database`, both of which validate their configuration eagerly at
+# module load (see packages/auth/src/env.ts and packages/database/src/env.ts).
+# Supplying these only to Playwright would make the build step fail before
+# e2e ever starts — see the WS-12 spec's implementation step 8.
+#
+# DATABASE_URL_POOLED / DATABASE_URL_DIRECT are not set here: they depend on
+# the Neon branch created mid-job (see the "Create Neon test branch" step),
+# and a job-level `env:` block cannot reference a step's outputs. They're
+# exported to $GITHUB_ENV instead, right after that step, which makes them
+# visible to every step from that point on exactly as if they had been
+# declared here.
+env:
+  NODE_ENV: test
+  COGNITO_ISSUER: https://localhost:3001
+  COGNITO_JWKS_URI: https://localhost:3001/.well-known/jwks.json
+  COGNITO_USER_POOL_ID: us-east-1_e2eTestPool
+  COGNITO_CLIENT_ID: e2e-test-client-id
+  AWS_REGION: us-east-1
+  KIOSK_DEVICE_TOKEN: e2e-test-kiosk-device-token
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Read Node version
+        id: node-version
+        run: echo "version=$(cat .nvmrc)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.node-version.outputs.version }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # A dedicated branch per run, not the development branch: concurrent
+      # runs against one shared branch would corrupt each other, and
+      # play_pass_ledger's append-only trigger makes cleanup of a shared
+      # branch awkward (see AGENTS.md "Data access" and the WS-12 spec's
+      # implementation step 9). Requires the `NEON_API_KEY` and
+      # `NEON_PROJECT_ID` repository secrets; see docs/testing.md.
+      - name: Create Neon test branch
+        id: neon-branch
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_name: ci-${{ github.run_id }}-${{ github.run_attempt }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Export database URLs
+        run: |
+          echo "DATABASE_URL_POOLED=${{ steps.neon-branch.outputs.db_url_pooled }}" >> "$GITHUB_ENV"
+          echo "DATABASE_URL_DIRECT=${{ steps.neon-branch.outputs.db_url }}" >> "$GITHUB_ENV"
+
+      - name: Run database migrations
+        run: pnpm db:migrate
+
+      # These four must stay byte-for-byte identical to pipeline.config.json's
+      # `verify` block, so CI and the pipeline runner agree on what "passing"
+      # means (WS-12 spec acceptance criterion 6).
+      - run: pnpm -r typecheck
+      - run: pnpm -r lint
+      - run: pnpm -r test
+      - run: pnpm -r build
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Delete Neon test branch
+        if: always()
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_id: ${{ steps.neon-branch.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}

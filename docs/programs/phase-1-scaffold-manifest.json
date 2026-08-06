@@ -219,7 +219,7 @@
       "id": "WS-06",
       "name": "Domain cores: reservation, customer, pass",
       "taskFile": "tasks/phase-1-scaffold/WS-06-booking-domain-cores.md",
-      "status": "in_progress",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-03"
@@ -235,7 +235,7 @@
       "id": "WS-07",
       "name": "Domain cores: commerce, notification",
       "taskFile": "tasks/phase-1-scaffold/WS-07-commerce-notification-cores.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-03"
@@ -249,7 +249,7 @@
       "id": "WS-08",
       "name": "Next.js app shell and four route groups",
       "taskFile": "tasks/phase-1-scaffold/WS-08-app-shell.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "L",
       "dependencies": [
         "WS-02",
@@ -264,7 +264,7 @@
       "id": "WS-09",
       "name": "Route protection and role gating",
       "taskFile": "tasks/phase-1-scaffold/WS-09-route-protection.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-04",
@@ -279,7 +279,7 @@
       "id": "WS-10",
       "name": "SST infrastructure and AWS resources",
       "taskFile": "tasks/phase-1-scaffold/WS-10-sst-infrastructure.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "L",
       "dependencies": [
         "WS-03",
@@ -295,7 +295,7 @@
       "id": "WS-11",
       "name": "Lambda workers and queue wiring",
       "taskFile": "tasks/phase-1-scaffold/WS-11-lambda-workers.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-07",
@@ -314,7 +314,7 @@
       "id": "WS-12",
       "name": "Test harness and CI pipeline",
       "taskFile": "tasks/phase-1-scaffold/WS-12-test-harness-ci.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-09",
@@ -328,7 +328,7 @@
       "id": "WS-13",
       "name": "Environment setup documentation",
       "taskFile": "tasks/phase-1-scaffold/WS-13-environment-docs.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "S",
       "dependencies": [
         "WS-10",

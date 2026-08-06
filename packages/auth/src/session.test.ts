@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CustomerProfile } from './session';
-import { createTestSigningKey, signTestJwt } from './test-support/rsa';
+import { createTestSigningKey, signTestJwt, tamperPayload } from './test-support/rsa';
 
 const BASE_ENV = {
   COGNITO_USER_POOL_ID: 'us-east-1_testPool01',
@@ -76,6 +76,32 @@ describe('resolveSession', () => {
     const result = await resolveSession(token);
 
     expect(result).toEqual({ kind: 'unprovisioned', cognitoSub: 'cognito-sub-unprovisioned' });
+  });
+
+  // WS-09 acceptance criterion #7: an invalid or expired token yields
+  // `anonymous`, not an unhandled error, since middleware/guards rely on
+  // resolveSession to already absorb this rather than adding a second
+  // try/catch of their own.
+  it('resolves anonymous, not an error, for an expired token', async () => {
+    const key = createTestSigningKey();
+    const { cognitoEnv, resolveSession } = await loadResolveSession(key);
+    const now = Math.floor(Date.now() / 1000);
+    const expiredToken = signedToken(key, cognitoEnv, { iat: now - 7200, exp: now - 3600 });
+
+    const result = await resolveSession(expiredToken);
+
+    expect(result).toEqual({ kind: 'anonymous' });
+    expect(mockFindProfileByCognitoSub).not.toHaveBeenCalled();
+  });
+
+  it('resolves anonymous, not an error, for a tampered token', async () => {
+    const key = createTestSigningKey();
+    const { cognitoEnv, resolveSession } = await loadResolveSession(key);
+    const token = signedToken(key, cognitoEnv);
+
+    const result = await resolveSession(tamperPayload(token));
+
+    expect(result).toEqual({ kind: 'anonymous' });
   });
 
   // Case 6

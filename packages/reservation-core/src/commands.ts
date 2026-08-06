@@ -14,26 +14,24 @@ import type {
 } from '@keki/contracts';
 import { NotImplementedInPhase1 } from './errors';
 
-export async function holdReservation(input: {
+export function holdReservation(input: {
   occurrenceId: OccurrenceId;
   householdId: HouseholdId;
   participants: readonly ReservationParticipant[];
 }): Promise<Reservation> {
   void input;
-  throw new NotImplementedInPhase1('holdReservation');
+  return Promise.reject(new NotImplementedInPhase1('holdReservation'));
 }
 
-export async function confirmReservation(input: {
-  reservationId: ReservationId;
-}): Promise<Reservation> {
+export function confirmReservation(input: { reservationId: ReservationId }): Promise<Reservation> {
   void input;
-  throw new NotImplementedInPhase1('confirmReservation');
+  return Promise.reject(new NotImplementedInPhase1('confirmReservation'));
 }
 
-export async function cancelReservation(input: {
+export function cancelReservation(input: {
   reservationId: ReservationId;
   reason: string;
 }): Promise<Reservation> {
   void input;
-  throw new NotImplementedInPhase1('cancelReservation');
+  return Promise.reject(new NotImplementedInPhase1('cancelReservation'));
 }

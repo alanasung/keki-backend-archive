@@ -4,7 +4,6 @@ import { customers, db, households } from '@keki/database';
 import {
   NotImplementedInPhase1,
   type Child,
-  type ChildId,
   type Customer,
   type Household,
   type HouseholdId,
@@ -84,32 +83,29 @@ export async function provisionCustomerProfile(input: {
   return toCustomer(insertedCustomer);
 }
 
-export async function addChild(input: {
+export function addChild(input: {
   householdId: HouseholdId;
   firstName: string;
   lastName: string;
   dateOfBirth: Date;
 }): Promise<Child> {
   void input;
-  throw new NotImplementedInPhase1('addChild');
+  return Promise.reject(new NotImplementedInPhase1('addChild'));
 }
 
-export async function updateHousehold(input: {
-  householdId: HouseholdId;
-  name: string;
-}): Promise<Household> {
+export function updateHousehold(input: { householdId: HouseholdId; name: string }): Promise<Household> {
   void input;
-  throw new NotImplementedInPhase1('updateHousehold');
+  return Promise.reject(new NotImplementedInPhase1('updateHousehold'));
 }
 
 // The only Phase 1 consumer of WaiverProvider — the dependency direction is
 // expressed in compiling code even though the body defers to Phase 2.
-export async function startWaiverSigning(input: {
+export function startWaiverSigning(input: {
   waiverProvider: WaiverProvider;
   householdId: HouseholdId;
   participantName: string;
   returnUrl: string;
 }): Promise<{ signingUrl: string }> {
   void input;
-  throw new NotImplementedInPhase1('startWaiverSigning');
+  return Promise.reject(new NotImplementedInPhase1('startWaiverSigning'));
 }

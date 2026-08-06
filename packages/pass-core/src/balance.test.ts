@@ -1,4 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// `./balance` also exports `getPassBalance`, which imports the real
+// `@keki/database` client — that module resolves Neon connection strings at
+// import time and throws without them. Mock it so `computeBalance` (pure, no
+// I/O) stays testable without a database, per the spec.
+vi.mock('@keki/database', () => ({
+  db: { select: vi.fn() },
+  playPassLedger: {},
+}));
+
 import { computeBalance, type LedgerEntry } from './balance';
 
 function entry(deltaCredits: number, reason: LedgerEntry['reason'], occurredAt: string): LedgerEntry {

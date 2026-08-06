@@ -1,0 +1,48 @@
+name: Deployed-stage tests
+
+# Manually triggered only — never on pull_request or push. These are the
+# WS-11 tests that exercise a real, already-deployed AWS stage (SQS, Lambda,
+# etc.) rather than mocks or a local Postgres branch; running them
+# automatically on every PR would require a live stage to exist for every
+# branch, which Phase 1 does not provide. See docs/testing.md and the WS-12
+# spec's implementation step 9 / acceptance criterion 9.
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: The deployed SST stage to test against (e.g. "dev", "staging")
+        required: true
+        type: string
+
+env:
+  RUN_DEPLOYED_STAGE_TESTS: "true"
+
+jobs:
+  deployed-stage-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Read Node version
+        id: node-version
+        run: echo "version=$(cat .nvmrc)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.node-version.outputs.version }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # No WS-11 test currently reads RUN_DEPLOYED_STAGE_TESTS or `inputs.stage`
+      # (see docs/testing.md) — this workflow is the gate future deployed-stage
+      # tests should target, following the same `describe.skipIf(...)`
+      # convention already used for the DB-only integration tests (e.g.
+      # packages/customer-core/src/commands.integration.test.ts). Once such a
+      # test exists, resolve `inputs.stage`'s linked resources here (the
+      # equivalent of what `sst dev` does locally) before running it.
+      - name: Run deployed-stage tests
+        run: pnpm -r test

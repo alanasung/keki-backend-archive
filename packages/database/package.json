@@ -13,7 +13,8 @@
     "test": "vitest run",
     "build": "tsc --noEmit -p tsconfig.json",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/migrate.ts"
+    "db:migrate": "tsx src/migrate.ts",
+    "db:verify-invariants": "psql \"$DATABASE_URL_DIRECT\" -v ON_ERROR_STOP=1 -f scripts/verify-invariants.sql"
   },
   "dependencies": {
     "@keki/contracts": "workspace:*",

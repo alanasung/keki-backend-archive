@@ -169,3 +169,49 @@ them too — `next build` loads the same eagerly-validated modules.
 | ------------------ | -------------------------------------------------- |
 | `NEON_API_KEY`      | Creating/deleting the per-run Neon branch          |
 | `NEON_PROJECT_ID`   | Which Neon project to branch from                  |
+
+## Database invariant verification (no Neon required)
+
+Two invariants live in hand-edited SQL inside the generated migration rather
+than in application code: the `play_pass_ledger` append-only trigger and the
+`reservation_participants` "exactly one participant" CHECK constraint. The
+Vitest integration suites that cover them are gated behind
+`skipIf(!hasLiveDatabase)` and use `@neondatabase/serverless`, which speaks
+WebSockets and therefore needs a Neon endpoint (or a WS proxy) — it cannot
+talk to a plain Postgres.
+
+`packages/database/scripts/verify-invariants.sql` asserts the same invariants
+through `psql`, so they can be checked against **any** Postgres, including a
+throwaway local one. Every assertion raises on failure, so a nonzero exit is a
+real defect.
+
+Against a local Postgres:
+
+```bash
+brew install postgresql@16
+export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
+export LC_ALL="en_US.UTF-8"   # required on macOS, or the postmaster aborts
+                              # with "became multithreaded during startup"
+
+initdb -D /tmp/keki-pg -U postgres --locale=C -E UTF8
+pg_ctl -D /tmp/keki-pg -o "-p 55432 -h 127.0.0.1" -l /tmp/keki-pg.log start
+createdb -h 127.0.0.1 -p 55432 -U postgres keki
+
+psql -h 127.0.0.1 -p 55432 -U postgres -d keki -v ON_ERROR_STOP=1 \
+  -f packages/database/drizzle/0000_even_blob.sql
+psql -h 127.0.0.1 -p 55432 -U postgres -d keki -v ON_ERROR_STOP=1 \
+  -f packages/database/scripts/verify-invariants.sql
+```
+
+Expect eight `PASS` notices and `ALL INVARIANTS VERIFIED`. Stop the server with
+`pg_ctl -D /tmp/keki-pg stop`.
+
+Against a real Neon branch, once `DATABASE_URL_DIRECT` is set:
+
+```bash
+pnpm --filter @keki/database db:verify-invariants
+```
+
+This is a supplement to the Vitest suites, not a replacement — those also cover
+the `FOR UPDATE SKIP LOCKED` outbox claim and webhook idempotency, which need
+the application driver and so still require Neon.

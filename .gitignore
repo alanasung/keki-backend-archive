@@ -22,3 +22,6 @@ dist/
 coverage/
 playwright-report/
 test-results/
+
+# Local agent settings (personal, not shared)
+.claude/settings.local.json

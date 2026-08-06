@@ -280,6 +280,47 @@ describe("ALARM_DEFINITIONS", () => {
     }
   });
 
+  // Regression: `createQueues` keyed its `dlqs` map by `definition.name`
+  // instead of `definition.dlqName`. Because `createAlarms` resolves alarms
+  // against `{ ...queues, ...dlqs }`, that both dropped every DLQ entry (the
+  // deploy died on "No queue named SquareWebhookQueueDLQ") and let each DLQ
+  // overwrite its parent queue, so the four age alarms would silently have
+  // watched the DLQs instead.
+  //
+  // This has to call `createQueues` rather than compare QUEUE_DEFINITIONS
+  // against ALARM_DEFINITIONS: those two were always consistent with each
+  // other, and the fault lay entirely in how the returned map was keyed. The
+  // `attachWorkers` tests above pass `dlqs: {}`, so nothing else builds the
+  // real key set.
+  it("keys createQueues' dlqs map so createAlarms can resolve every alarm", async () => {
+    const previousSst = (globalThis as Record<string, unknown>)["sst"];
+
+    class FakeQueue {
+      readonly arn: string;
+      constructor(readonly resourceName: string) {
+        this.arn = `arn:aws:sqs:us-east-1:000000000000:${resourceName}`;
+      }
+    }
+    (globalThis as Record<string, unknown>)["sst"] = { aws: { Queue: FakeQueue } };
+
+    try {
+      const { createQueues } = await import("./queues");
+      const { queues, dlqs } = createQueues();
+
+      expect(Object.keys(dlqs).sort()).toEqual(QUEUE_DEFINITIONS.map((d) => d.dlqName).sort());
+
+      // The exact merge createAlarms performs: no DLQ may shadow its parent.
+      const resolved = { ...queues, ...dlqs };
+      expect(Object.keys(resolved).length).toBe(QUEUE_DEFINITIONS.length * 2);
+
+      for (const alarm of ALARM_DEFINITIONS) {
+        expect(resolved[alarm.queueRefName]).toBeDefined();
+      }
+    } finally {
+      (globalThis as Record<string, unknown>)["sst"] = previousSst;
+    }
+  });
+
   it("treats missing data as not breaching on every alarm", () => {
     for (const alarm of ALARM_DEFINITIONS) {
       expect(alarm.treatMissingData).toBe("notBreaching");

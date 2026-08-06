@@ -56,7 +56,12 @@ export function createQueues(): QueueResources {
         queue: { messageRetentionSeconds: definition.dlqRetentionSeconds },
       },
     });
-    dlqs[definition.name] = dlq;
+    // Key by the DLQ's own name, not the parent queue's. `createAlarms` merges
+    // these two maps (`{ ...queues, ...dlqs }`) and looks alarms up by
+    // `dlqName`; keying by `definition.name` both loses the DLQ entry and lets
+    // each DLQ overwrite its parent queue, so the main-queue alarms would
+    // silently watch the DLQ instead.
+    dlqs[definition.dlqName] = dlq;
 
     queues[definition.name] = new sst.aws.Queue(definition.name, {
       visibilityTimeout: `${definition.visibilityTimeoutSeconds} seconds`,

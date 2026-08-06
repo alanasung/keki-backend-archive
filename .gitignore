@@ -1,1 +1,24 @@
 build-logs/
+
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+
+# SST / OpenNext
+.sst/
+.open-next/
+
+# Build artifacts
+dist/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/

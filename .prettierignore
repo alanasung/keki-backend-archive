@@ -1,0 +1,16 @@
+node_modules
+.next
+.sst
+.open-next
+dist
+coverage
+build-logs
+drizzle
+pnpm-lock.yaml
+*.tsbuildinfo
+
+# Packaged skill files carry embedded integrity checksums; reformatting
+# would invalidate them.
+.claude/skills
+.cursor/skills
+skills

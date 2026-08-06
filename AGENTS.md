@@ -1,4 +1,5 @@
 <!-- BEGIN UNIVERSAL — source: @wildorder/program-pipeline packaged default -->
+
 # Agent Directives: Universal
 
 These directives apply to every agent working in this repository, regardless
@@ -49,6 +50,7 @@ of provider or harness.
 8. PARALLELIZE INDEPENDENT WORK: When the harness supports sub-agents and the
    task spans many independent files, split the work rather than degrading a
    single context; keep tightly coupled changes together.
+
 <!-- END UNIVERSAL -->
 
 ---
@@ -78,7 +80,7 @@ establishes them.
 - `packages/*-core` are plain TypeScript libraries. They must not import from
   `apps/web`, and must not depend on Next.js, React, or any AWS SDK surface
   beyond what they genuinely need.
-- Domain packages are imported *directly* by Next.js Server Actions and by
+- Domain packages are imported _directly_ by Next.js Server Actions and by
   Lambda handlers in `functions/`. Do not introduce an internal HTTP hop
   between the app and the core.
 - **Do not create a Lambda per package.** `functions/` holds exactly the four
@@ -121,6 +123,19 @@ establishes them.
 - SST + OpenNext own all AWS provisioning. No resource is created by hand in
   the console.
 - Every SQS queue has a DLQ and a CloudWatch alarm on failure.
+- Every workspace package (`apps/*`, `packages/*`, `functions/*`) defines all
+  four scripts — `typecheck`, `lint`, `test`, `build` — because a bare
+  `pnpm -r` invocation fails a package that lacks the script. Do not use
+  `--if-present` to paper over a missing script; a package with nothing to
+  test yet still defines a `test` script that runs its (possibly empty)
+  Vitest project.
+- Internal `packages/*` libraries are consumed as source, not as a build
+  artifact. Each package's `main`, `types`, and `exports` point at
+  `./src/index.ts` rather than a built `dist/`. Next.js transpiles the source
+  directly via `transpilePackages`, and Lambda handlers in `functions/`
+  bundle it with esbuild. Consequently a library's `build` script is a
+  compile gate (`tsc --noEmit -p tsconfig.json`), not an emit step — do not
+  invent a per-package emit pipeline.
 
 ### Dependency Versions (pin these)
 
@@ -128,17 +143,17 @@ Exact versions are pinned by the scaffold's `pnpm-lock.yaml`; the constraints
 below are the intended major versions. Fill the exact column when the lockfile
 lands.
 
-| Package | Version |
-|---------|---------|
-| next | 15.x |
-| react / react-dom | matching Next 15 requirement |
-| typescript | 5.x |
-| pnpm | 9.x (workspace) |
-| sst | 3.x |
-| @opennextjs/aws | 3.x |
-| drizzle-orm | latest 0.x |
-| drizzle-kit | matching drizzle-orm |
-| @neondatabase/serverless | latest |
-| tailwindcss | 4.x |
-| vitest | 3.x |
-| @playwright/test | 1.x |
+| Package                  | Version                      |
+| ------------------------ | ---------------------------- |
+| next                     | 15.x                         |
+| react / react-dom        | matching Next 15 requirement |
+| typescript               | 5.x                          |
+| pnpm                     | 9.x (workspace)              |
+| sst                      | 3.x                          |
+| @opennextjs/aws          | 3.x                          |
+| drizzle-orm              | latest 0.x                   |
+| drizzle-kit              | matching drizzle-orm         |
+| @neondatabase/serverless | latest                       |
+| tailwindcss              | 4.x                          |
+| vitest                   | 3.x                          |
+| @playwright/test         | 1.x                          |

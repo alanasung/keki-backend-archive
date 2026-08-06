@@ -34,7 +34,7 @@ One Next.js application, four route groups, one domain core.
 - **Standalone Lambda handlers** import the same packages for asynchronous
   work: Square webhooks, notification delivery, reconciliation, and scheduled
   tasks.
-- **Core packages are plain TypeScript libraries.** There is deliberately *not*
+- **Core packages are plain TypeScript libraries.** There is deliberately _not_
   a Lambda per package; the deployment boundary and the module boundary are
   separate decisions.
 
@@ -90,17 +90,17 @@ Provisioned with SST + OpenNext. CloudWatch alarms watch queue failures.
 
 ## Core Concepts
 
-| Concept | Meaning |
-|---------|---------|
-| **Household** | The billing and grouping unit. Customers and children belong to a household. |
-| **Customer** | An adult account holder with a Cognito identity and a Postgres profile. |
-| **Child** | A non-authenticating participant attached to a household; the subject of many reservations and waivers. |
-| **Offering** | A sellable, schedulable thing: a class, a room, an open-play session. |
-| **Occurrence** | A specific dated instance of an offering — what a reservation actually points at. |
-| **Reservation** | A held or confirmed claim on an occurrence, with participants attached. |
-| **Play pass** | Prepaid, drawn-down entitlement to play sessions, tracked by an append-only ledger. |
-| **Waiver record** | Proof that a liability waiver was signed for a participant, sourced from the waiver provider. |
-| **Notification outbox** | Durable queue of outbound customer messages, drained by the notification worker. |
+| Concept                 | Meaning                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Household**           | The billing and grouping unit. Customers and children belong to a household.                            |
+| **Customer**            | An adult account holder with a Cognito identity and a Postgres profile.                                 |
+| **Child**               | A non-authenticating participant attached to a household; the subject of many reservations and waivers. |
+| **Offering**            | A sellable, schedulable thing: a class, a room, an open-play session.                                   |
+| **Occurrence**          | A specific dated instance of an offering — what a reservation actually points at.                       |
+| **Reservation**         | A held or confirmed claim on an occurrence, with participants attached.                                 |
+| **Play pass**           | Prepaid, drawn-down entitlement to play sessions, tracked by an append-only ledger.                     |
+| **Waiver record**       | Proof that a liability waiver was signed for a participant, sourced from the waiver provider.           |
+| **Notification outbox** | Durable queue of outbound customer messages, drained by the notification worker.                        |
 
 ## API Surface
 
@@ -131,12 +131,12 @@ Reservation-capacity logic is deliberately not finalized in Phase 1.
 
 ## Target Users
 
-| Persona | Surface | Needs |
-|---------|---------|-------|
+| Persona                        | Surface       | Needs                                                                                           |
+| ------------------------------ | ------------- | ----------------------------------------------------------------------------------------------- |
 | **Customer** (parent/guardian) | `(customer)/` | Book classes and rooms, manage household and children, buy and spend play passes, sign waivers. |
-| **Walk-in visitor** | `kiosk/` | Self-serve booking and waiver signing on-site, without an account-first flow. |
-| **Front of house** | `staff/` | See today's schedule, check people in, know current occupancy. |
-| **Manager / Admin** | `admin/` | Define offerings, publish schedules, resolve reservations, look up customers. |
+| **Walk-in visitor**            | `kiosk/`      | Self-serve booking and waiver signing on-site, without an account-first flow.                   |
+| **Front of house**             | `staff/`      | See today's schedule, check people in, know current occupancy.                                  |
+| **Manager / Admin**            | `admin/`      | Define offerings, publish schedules, resolve reservations, look up customers.                   |
 
 Roles: `CUSTOMER`, `FRONT_OF_HOUSE`, `MANAGER`, `ADMIN`.
 

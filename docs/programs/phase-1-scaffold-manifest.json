@@ -1,0 +1,351 @@
+{
+  "program": {
+    "id": "phase-1-scaffold",
+    "name": "Phase 1 Scaffold",
+    "description": "Structural skeleton for Keki: pnpm monorepo, Drizzle schema, Cognito/Postgres auth split, four Next.js route groups, SST-provisioned AWS resources, async workers, and CI — with no booking, payment, waiver, or marketing logic.",
+    "status": "planning",
+    "created": "2026-08-04"
+  },
+  "technology": {
+    "framework": "Next.js 15 App Router",
+    "language": "TypeScript 5.x",
+    "packageManager": "pnpm 9.x workspace",
+    "infrastructure": "SST 3.x + OpenNext on AWS",
+    "database": "Neon Postgres",
+    "orm": "Drizzle ORM",
+    "auth": "Amazon Cognito (identity) + Postgres (profiles and roles)",
+    "styling": "Tailwind CSS 4.x",
+    "unitTesting": "Vitest 3.x",
+    "e2eTesting": "Playwright 1.x",
+    "ci": "GitHub Actions",
+    "taskRunner": "pnpm recursive (no Turborepo)"
+  },
+  "successCriteria": [
+    {
+      "id": "SC-01",
+      "description": "pnpm dev runs the Next.js application locally."
+    },
+    {
+      "id": "SC-02",
+      "description": "sst dev links the application to its AWS resources."
+    },
+    {
+      "id": "SC-03",
+      "description": "Neon migrations run successfully using the direct connection string."
+    },
+    {
+      "id": "SC-04",
+      "description": "Placeholder customer, kiosk, staff, and admin routes all load."
+    },
+    {
+      "id": "SC-05",
+      "description": "staff/ and admin/ routes require authentication and reject an unauthorized role."
+    },
+    {
+      "id": "SC-06",
+      "description": "Every shared package compiles independently (pnpm -r typecheck passes)."
+    },
+    {
+      "id": "SC-07",
+      "description": "Vitest and Playwright both run in CI."
+    },
+    {
+      "id": "SC-08",
+      "description": "A sample message published to SQS is consumed by its deployed worker."
+    },
+    {
+      "id": "SC-09",
+      "description": "Environment setup is documented in the repository README."
+    },
+    {
+      "id": "SC-10",
+      "description": "All thirteen Drizzle tables exist with generated, applied migrations."
+    },
+    {
+      "id": "SC-11",
+      "description": "All five integration interfaces are defined and referenced, with no production implementation."
+    },
+    {
+      "id": "SC-12",
+      "description": "The four roles exist, with Cognito holding identity and Postgres holding profile and role assignment."
+    },
+    {
+      "id": "SC-13",
+      "description": "Application traffic uses the pooled connection string and migrations use the direct one, configured as separate secrets."
+    },
+    {
+      "id": "SC-14",
+      "description": "Every SQS queue has a DLQ and a CloudWatch failure alarm."
+    }
+  ],
+  "packages": [
+    {
+      "name": "web",
+      "path": "apps/web",
+      "description": "Next.js 15 App Router application serving the customer, kiosk, staff, and admin route groups."
+    },
+    {
+      "name": "contracts",
+      "path": "packages/contracts",
+      "description": "Shared domain types, validation schemas, role constants, and the five typed integration interfaces."
+    },
+    {
+      "name": "database",
+      "path": "packages/database",
+      "description": "Drizzle schema for all thirteen tables, migrations, and the pooled/direct Neon connection split."
+    },
+    {
+      "name": "auth",
+      "path": "packages/auth",
+      "description": "Cognito token verification, session helpers, and the Postgres-backed profile and role lookup."
+    },
+    {
+      "name": "ui",
+      "path": "packages/ui",
+      "description": "Shared Tailwind preset, navigation, and layout primitives."
+    },
+    {
+      "name": "reservation-core",
+      "path": "packages/reservation-core",
+      "description": "Booking domain library skeleton. Capacity logic deferred to Phase 2."
+    },
+    {
+      "name": "customer-core",
+      "path": "packages/customer-core",
+      "description": "Household, customer, and child domain library skeleton."
+    },
+    {
+      "name": "pass-core",
+      "path": "packages/pass-core",
+      "description": "Play pass and append-only ledger domain library skeleton."
+    },
+    {
+      "name": "commerce-core",
+      "path": "packages/commerce-core",
+      "description": "Payment record and Square-facing domain library skeleton. No checkout."
+    },
+    {
+      "name": "notification-core",
+      "path": "packages/notification-core",
+      "description": "Notification outbox domain library skeleton. No provider implementations."
+    },
+    {
+      "name": "square-webhook",
+      "path": "functions/square-webhook",
+      "description": "Lambda handler receiving inbound Square webhooks."
+    },
+    {
+      "name": "notification-worker",
+      "path": "functions/notification-worker",
+      "description": "Lambda handler draining the notification outbox queue."
+    },
+    {
+      "name": "reconciliation-worker",
+      "path": "functions/reconciliation-worker",
+      "description": "Lambda handler for payment and reservation reconciliation."
+    },
+    {
+      "name": "scheduled-task-worker",
+      "path": "functions/scheduled-task-worker",
+      "description": "Lambda handler invoked by EventBridge Scheduler."
+    }
+  ],
+  "workstreams": [
+    {
+      "id": "WS-01",
+      "name": "Monorepo foundation and toolchain",
+      "taskFile": "tasks/phase-1-scaffold/WS-01-monorepo-foundation.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [],
+      "packages": []
+    },
+    {
+      "id": "WS-02",
+      "name": "Contracts: domain types and integration interfaces",
+      "taskFile": "tasks/phase-1-scaffold/WS-02-contracts.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-01"
+      ],
+      "packages": [
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-03",
+      "name": "Database: Drizzle schema, migrations, dual connections",
+      "taskFile": "tasks/phase-1-scaffold/WS-03-database.md",
+      "status": "complete",
+      "size": "L",
+      "dependencies": [
+        "WS-02"
+      ],
+      "packages": [
+        "database",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-04",
+      "name": "Auth: Cognito identity and Postgres role model",
+      "taskFile": "tasks/phase-1-scaffold/WS-04-auth.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-03"
+      ],
+      "packages": [
+        "auth",
+        "contracts",
+        "database"
+      ]
+    },
+    {
+      "id": "WS-05",
+      "name": "UI: Tailwind preset and shared layout primitives",
+      "taskFile": "tasks/phase-1-scaffold/WS-05-ui.md",
+      "status": "complete",
+      "size": "S",
+      "dependencies": [
+        "WS-01"
+      ],
+      "packages": [
+        "ui"
+      ]
+    },
+    {
+      "id": "WS-06",
+      "name": "Domain cores: reservation, customer, pass",
+      "taskFile": "tasks/phase-1-scaffold/WS-06-booking-domain-cores.md",
+      "status": "in_progress",
+      "size": "M",
+      "dependencies": [
+        "WS-03"
+      ],
+      "packages": [
+        "reservation-core",
+        "customer-core",
+        "pass-core",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-07",
+      "name": "Domain cores: commerce, notification",
+      "taskFile": "tasks/phase-1-scaffold/WS-07-commerce-notification-cores.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": [
+        "WS-03"
+      ],
+      "packages": [
+        "commerce-core",
+        "notification-core"
+      ]
+    },
+    {
+      "id": "WS-08",
+      "name": "Next.js app shell and four route groups",
+      "taskFile": "tasks/phase-1-scaffold/WS-08-app-shell.md",
+      "status": "not_started",
+      "size": "L",
+      "dependencies": [
+        "WS-02",
+        "WS-05"
+      ],
+      "packages": [
+        "web",
+        "ui"
+      ]
+    },
+    {
+      "id": "WS-09",
+      "name": "Route protection and role gating",
+      "taskFile": "tasks/phase-1-scaffold/WS-09-route-protection.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": [
+        "WS-04",
+        "WS-08"
+      ],
+      "packages": [
+        "web",
+        "auth"
+      ]
+    },
+    {
+      "id": "WS-10",
+      "name": "SST infrastructure and AWS resources",
+      "taskFile": "tasks/phase-1-scaffold/WS-10-sst-infrastructure.md",
+      "status": "not_started",
+      "size": "L",
+      "dependencies": [
+        "WS-03",
+        "WS-04",
+        "WS-08",
+        "WS-09"
+      ],
+      "packages": [
+        "web"
+      ]
+    },
+    {
+      "id": "WS-11",
+      "name": "Lambda workers and queue wiring",
+      "taskFile": "tasks/phase-1-scaffold/WS-11-lambda-workers.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": [
+        "WS-07",
+        "WS-10"
+      ],
+      "packages": [
+        "square-webhook",
+        "notification-worker",
+        "reconciliation-worker",
+        "scheduled-task-worker",
+        "notification-core",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-12",
+      "name": "Test harness and CI pipeline",
+      "taskFile": "tasks/phase-1-scaffold/WS-12-test-harness-ci.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": [
+        "WS-09",
+        "WS-11"
+      ],
+      "packages": [
+        "web"
+      ]
+    },
+    {
+      "id": "WS-13",
+      "name": "Environment setup documentation",
+      "taskFile": "tasks/phase-1-scaffold/WS-13-environment-docs.md",
+      "status": "not_started",
+      "size": "S",
+      "dependencies": [
+        "WS-10",
+        "WS-12"
+      ],
+      "packages": []
+    }
+  ],
+  "outOfScope": [
+    "Reservation capacity and booking logic",
+    "Square checkout and payment reconciliation",
+    "Waiver signing end to end",
+    "Klaviyo flows and marketing automation",
+    "Play-pass draw-down at check-in",
+    "Webflow content",
+    "Production implementations behind any of the five integration interfaces",
+    "A public REST API",
+    "Real occupancy calculation on staff/occupancy"
+  ]
+}

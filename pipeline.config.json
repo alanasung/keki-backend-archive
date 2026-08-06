@@ -3,13 +3,17 @@
   "pipelineVersion": "0.3.2",
   "visionPath": "docs/vision.md",
   "requireApprovalBeforeBuild": true,
-  "agent": { "command": "claude", "args": ["-p", "--model", "sonnet"] },
-  "validatorAgent": { "command": "codex", "args": ["exec", "--model", "gpt-sol"] },
+  "agent": {
+    "command": "claude",
+    "args": ["-p", "--model", "sonnet", "--dangerously-skip-permissions"]
+  },
+  "validatorAgent": { "command": "codex", "args": ["exec", "--model", "gpt-5.6-terra"] },
   "models": {
     "author": "claude-code/opus",
-    "validator": "gpt-sol"
+    "validator": "gpt-5.6-terra"
   },
   "verify": {
+    "workspace": "test -f pnpm-workspace.yaml && test -f package.json",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",

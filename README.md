@@ -14,8 +14,10 @@ vision and scope.
 - **pnpm 9** (`packageManager` in `package.json` pins `9.15.9`). Install via
   [Corepack](https://pnpm.io/installation#using-corepack) or standalone.
 - **An AWS account with credentials configured** (`aws configure`, or an
-  equivalent credential provider) — required for `sst dev` / `sst deploy` and
-  for setting SST secrets.
+  equivalent credential provider) — required for `sst dev`, personal-stage
+  deploys, and setting SST secrets. Production deploys do not run from
+  workstations: they are tag-triggered through GitHub Actions (see
+  [`docs/environment.md`](docs/environment.md) "Deploying to production").
 - **A Neon project** — provides the pooled and direct Postgres connection
   strings the app and its migrations use.
 

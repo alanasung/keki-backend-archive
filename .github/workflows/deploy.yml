@@ -1,0 +1,100 @@
+name: Deploy production
+
+# The only sanctioned path to a production deploy: push a `v*` tag at a
+# commit that already passed CI on main, then approve the run in the
+# `production` GitHub Environment. Every deploy is thereby attributable to
+# a git ref and an approver. Laptop deploys are refused by the stage guard
+# in sst.config.ts (KEKI_ALLOW_LOCAL_PROD_DEPLOY=1 is the break-glass).
+#
+# Requires (see docs/aws-iam-request.md "GitHub OIDC deploy role"):
+# - The `keki-github-production-deploy` IAM role and OIDC provider.
+# - A `production` GitHub Environment with required reviewers and the
+#   DATABASE_URL_POOLED / DATABASE_URL_DIRECT secrets (production Neon,
+#   pooled and direct endpoints — same values as the SST secrets
+#   NeonPooledUrl / NeonDirectUrl; rotate both places together).
+# - The seven SST secrets seeded for the production stage
+#   (docs/environment.md "Provisioning the SST secrets").
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  id-token: write # OIDC token for aws-actions/configure-aws-credentials
+  contents: read
+  actions: read # `gh run list` in the CI-passed check
+
+# Two tags must never run Pulumi operations concurrently; queue, don't cancel.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      # Tags are not gated by CI, so re-check that the tagged commit passed
+      # the CI workflow (which runs on every push to main). This deliberately
+      # rejects tags on commits that skipped or failed CI.
+      - name: Require a successful CI run for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          successes=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow CI \
+            --commit "$GITHUB_SHA" --json conclusion \
+            --jq '[.[] | select(.conclusion == "success")] | length')
+          if [ "$successes" -eq 0 ]; then
+            echo "No successful CI run found for $GITHUB_SHA." >&2
+            echo "Tag a commit on main that has passed CI, then push the tag again." >&2
+            exit 1
+          fi
+          echo "Found $successes successful CI run(s) for $GITHUB_SHA."
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Read Node version
+        id: node-version
+        run: echo "version=$(cat .nvmrc)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.node-version.outputs.version }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # AWS_ROLE_ARN is a variable on the `production` GitHub Environment.
+      # A new environment (e.g. a dev account later) sets its own value —
+      # plus a matching `sub` entry in that role's trust policy (see
+      # docs/aws-iam-request.md "GitHub OIDC deploy role").
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # Migrations run before the deploy, so they must stay backward
+      # compatible with the previous app version — rollback is roll-forward
+      # (redeploy the prior tag needs the newer schema to still work).
+      - name: Run database migrations
+        env:
+          DATABASE_URL_POOLED: ${{ secrets.DATABASE_URL_POOLED }}
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+        run: pnpm db:migrate
+
+      # GITHUB_ACTIONS=true (set by the runner) satisfies the production
+      # stage guard in sst.config.ts.
+      - name: Deploy
+        run: pnpm exec sst deploy --stage production
+
+      - name: Smoke test (SQS round trip)
+        env:
+          KEKI_STAGE: production
+        run: pnpm exec tsx scripts/deployed-stage-smoke.ts

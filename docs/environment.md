@@ -105,3 +105,27 @@ secrets are declared for the Phase 2 integrations described in
   `protect: true` for the `production` stage: resources are never torn down
   as a side effect, and `sst remove` refuses to run against it without
   explicit confirmation.
+
+## Deploying to production
+
+Production deploys are git-tracked and run **only from GitHub Actions**
+(`.github/workflows/deploy.yml`): push a `v*` tag at a commit that passed CI
+on main, then approve the run in the `production` GitHub Environment. The
+workflow verifies CI passed for the tagged commit, runs migrations against
+production Neon, deploys via OIDC-assumed credentials (no long-lived keys),
+and finishes with an SQS round-trip smoke test.
+
+A guard in `sst.config.ts` refuses `sst deploy --stage production` (and any
+other program-evaluating command against that stage) outside GitHub Actions.
+Setting SST secrets for production from a workstation still works — the
+guard only covers operations that evaluate the infrastructure program.
+
+Break-glass, for deploying a known-good tag while Actions is unavailable:
+
+```sh
+KEKI_ALLOW_LOCAL_PROD_DEPLOY=1 pnpm exec sst deploy --stage production
+```
+
+One-time setup for the pipeline (OIDC role, GitHub Environment, secrets) is
+documented in [`docs/aws-iam-request.md`](aws-iam-request.md) under "GitHub
+OIDC deploy role".

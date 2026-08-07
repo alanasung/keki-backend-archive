@@ -3,7 +3,7 @@
     "id": "phase-1-scaffold",
     "name": "Phase 1 Scaffold",
     "description": "Structural skeleton for Keki: pnpm monorepo, Drizzle schema, Cognito/Postgres auth split, four Next.js route groups, SST-provisioned AWS resources, async workers, and CI — with no booking, payment, waiver, or marketing logic.",
-    "status": "planning",
+    "status": "complete",
     "created": "2026-08-04"
   },
   "technology": {

@@ -1,18 +1,33 @@
 name: Deployed-stage tests
 
-# Manually triggered only — never on pull_request or push. These are the
-# WS-11 tests that exercise a real, already-deployed AWS stage (SQS, Lambda,
-# etc.) rather than mocks or a local Postgres branch; running them
-# automatically on every PR would require a live stage to exist for every
-# branch, which Phase 1 does not provide. See docs/testing.md and the WS-12
-# spec's implementation step 9 / acceptance criterion 9.
+# Manually triggered only — never on pull_request or push. These exercise a
+# real, already-deployed AWS stage (SQS, Lambda, etc.) rather than mocks or
+# a local Postgres branch; running them automatically on every PR would
+# require a live stage to exist for every branch, which Phase 1 does not
+# provide. See docs/testing.md.
+#
+# The deploy workflow (deploy.yml) runs the same smoke test automatically
+# after every production deploy; this workflow is for checking a stage on
+# demand. The job runs inside the chosen GitHub Environment, which supplies
+# AWS_ROLE_ARN and satisfies the OIDC role's `environment:` trust condition
+# (docs/aws-iam-request.md "GitHub OIDC deploy role") — and means testing
+# against production goes through that environment's protection rules.
 on:
   workflow_dispatch:
     inputs:
       stage:
-        description: The deployed SST stage to test against (e.g. "dev", "staging")
+        description: The deployed SST stage to test against (e.g. "dev", "production")
         required: true
         type: string
+      environment:
+        description: GitHub Environment supplying AWS_ROLE_ARN (usually matches the stage's AWS account)
+        required: true
+        type: string
+        default: production
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
   RUN_DEPLOYED_STAGE_TESTS: "true"
@@ -20,6 +35,7 @@ env:
 jobs:
   deployed-stage-tests:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4
 
@@ -37,12 +53,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # No WS-11 test currently reads RUN_DEPLOYED_STAGE_TESTS or `inputs.stage`
-      # (see docs/testing.md) — this workflow is the gate future deployed-stage
-      # tests should target, following the same `describe.skipIf(...)`
-      # convention already used for the DB-only integration tests (e.g.
-      # packages/customer-core/src/commands.integration.test.ts). Once such a
-      # test exists, resolve `inputs.stage`'s linked resources here (the
-      # equivalent of what `sst dev` does locally) before running it.
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Smoke test (SQS round trip)
+        env:
+          KEKI_STAGE: ${{ inputs.stage }}
+        run: pnpm exec tsx scripts/deployed-stage-smoke.ts
+
+      # Future deployed-stage vitest suites should gate on
+      # RUN_DEPLOYED_STAGE_TESTS via `describe.skipIf(...)`, following the
+      # convention the DB-only integration tests already use (e.g.
+      # packages/customer-core/src/commands.integration.test.ts).
       - name: Run deployed-stage tests
         run: pnpm -r test

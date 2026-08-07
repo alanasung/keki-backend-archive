@@ -15,12 +15,32 @@ export default $config({
     return {
       name: "keki",
       home: "aws",
+      // Must stay in lockstep with AWS_REGION in infra/index.ts — this value
+      // places the resources, that one tells the app runtime where Cognito
+      // lives. They cannot share a constant because this file may not import
+      // infra/ at top level (see above).
       region: "us-east-1",
       removal: input?.stage === "production" ? "retain" : "remove",
       protect: input?.stage === "production",
     };
   },
   async run() {
+    // Production deploys are git-tracked: they run only from GitHub Actions
+    // (deploy.yml, triggered by a v* tag). This guard lives in run(), not
+    // app(), so laptop `sst secret set --stage production` keeps working —
+    // only operations that evaluate the program (deploy/dev/diff/refresh/
+    // remove) are refused. KEKI_ALLOW_LOCAL_PROD_DEPLOY=1 is the documented
+    // break-glass for deploying a known-good tag while Actions is down.
+    if (
+      $app.stage === "production" &&
+      process.env.GITHUB_ACTIONS !== "true" &&
+      process.env.KEKI_ALLOW_LOCAL_PROD_DEPLOY !== "1"
+    ) {
+      throw new Error(
+        "Production deploys run from GitHub Actions only (push a v* tag). " +
+          "Break-glass: KEKI_ALLOW_LOCAL_PROD_DEPLOY=1 sst deploy --stage production",
+      );
+    }
     const { createInfra } = await import("./infra/index");
     return createInfra();
   },

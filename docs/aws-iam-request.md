@@ -106,6 +106,70 @@ permanent dependency.
 strictly broader than the policy above, which is already scoped to IAM actions
 on one account.
 
+## GitHub OIDC deploy role
+
+Production deploys run from GitHub Actions (`.github/workflows/deploy.yml`,
+triggered by a `v*` tag), authenticating via GitHub's OIDC provider instead
+of stored access keys. This needs a one-time setup by the same administrator,
+in the **workload account `495504746201`**:
+
+**1. Create the OIDC identity provider** (skip if one already exists):
+
+```bash
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com
+```
+
+**2. Create the deploy role** `keki-github-production-deploy` with this trust
+policy. Both workflows (`deploy.yml` and `deployed-stage-tests.yml`) run
+inside the `production` GitHub Environment, so a single `environment`
+subject covers them and limits the role to approved runs of this repository:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::495504746201:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:Keki-Place/keki-backend:environment:production"
+        }
+      }
+    }
+  ]
+}
+```
+
+**3. Attach permissions**: the AWS-managed `PowerUserAccess` policy plus the
+`SstManagedRoles` / `SstManagedPolicies` / `ServiceLinkedRoles` inline policy
+from the "Requested change" section above — the deploy role needs exactly
+what a deploying engineer needs.
+
+**4. In the GitHub repository** (repo admin, not AWS):
+
+- Create a `production` Environment (Settings → Environments) with at least
+  one required reviewer.
+- Add the environment secrets `DATABASE_URL_POOLED` and
+  `DATABASE_URL_DIRECT` (production Neon pooled/direct URLs — the same
+  values as the `NeonPooledUrl` / `NeonDirectUrl` SST secrets; rotate both
+  places together).
+- On the `production` Environment, add the **environment variable**
+  `AWS_ROLE_ARN` set to the deploy role's ARN, e.g.
+  `arn:aws:iam::495504746201:role/keki-github-production-deploy`. Both
+  workflows read it via `vars.AWS_ROLE_ARN` from whichever environment their
+  job runs in. Spinning up a new account later (e.g. dev) means: new GitHub
+  Environment, its own `AWS_ROLE_ARN` variable, and a role in that account
+  whose trust policy names `repo:Keki-Place/keki-backend:environment:<name>`.
+
 ## Verifying afterwards
 
 ```bash

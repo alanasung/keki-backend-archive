@@ -10,7 +10,6 @@
     "dev": "pnpm --filter web dev",
     "postinstall": "sst install",
     "sst:dev": "sst dev",
-    "deploy": "sst deploy",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
@@ -19,6 +18,7 @@
     "build": "pnpm -r build",
     "db:migrate": "pnpm --filter @keki/database db:migrate",
     "publish-sample-message": "tsx scripts/publish-sample-message.ts",
+    "deployed-stage-smoke": "tsx scripts/deployed-stage-smoke.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -34,6 +34,7 @@
     "@playwright/test": "^1.51.1",
     "@types/node": "^22.19.21",
     "@vitest/coverage-v8": "^3.2.7",
+    "@wildorder/program-pipeline": "^0.5.2",
     "dotenv": "^17.4.2",
     "eslint": "^9.19.0",
     "eslint-plugin-import": "^2.31.0",

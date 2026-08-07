@@ -5,6 +5,13 @@ on:
   push:
     branches: [main]
 
+# Supersede stale runs on PR branches; never cancel a main run — deploy.yml
+# checks for a successful CI run on the tagged commit, so a cancelled main
+# run would block a later tag on that commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 # Shared by every step, not only the `webServer` Playwright spawns for e2e:
 # `next build` (the "build" step below) imports `@keki/auth` and
 # `@keki/database`, both of which validate their configuration eagerly at
@@ -76,6 +83,16 @@ jobs:
       - run: pnpm -r lint
       - run: pnpm -r test
       - run: pnpm -r build
+
+      # Keyed on the lockfile: the browser build is pinned by the
+      # @playwright/test version resolved there. `install --with-deps` below
+      # is still run on a cache hit — it no-ops the download and only installs
+      # OS packages.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium

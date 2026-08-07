@@ -131,8 +131,8 @@ the org and repo names carry their immutable numeric IDs
 (`Keki-Place@310325506`, `keki-backend@1323429224`). The classic
 `repo:Org/Repo:...` pattern from older tutorials does NOT match and fails
 with `Not authorized to perform sts:AssumeRoleWithWebIdentity`. When in
-doubt, the failed attempt's CloudTrail event (`AssumeRoleWithWebIdentity` in
-us-east-1) records the exact subject presented — copy it verbatim:
+doubt, the failed attempt's CloudTrail event (`AssumeRoleWithWebIdentity`, in
+the workflow region) records the exact subject presented — copy it verbatim:
 
 ```json
 {
@@ -168,13 +168,15 @@ what a deploying engineer needs.
   `DATABASE_URL_DIRECT` (production Neon pooled/direct URLs — the same
   values as the `NeonPooledUrl` / `NeonDirectUrl` SST secrets; rotate both
   places together).
-- On the `production` Environment, add the **environment variable**
-  `AWS_ROLE_ARN` set to the deploy role's ARN, e.g.
-  `arn:aws:iam::495504746201:role/keki-github-production-deploy`. Both
-  workflows read it via `vars.AWS_ROLE_ARN` from whichever environment their
-  job runs in. Spinning up a new account later (e.g. dev) means: new GitHub
-  Environment, its own `AWS_ROLE_ARN` variable, and a role in that account
-  whose trust policy names `repo:Keki-Place/keki-backend:environment:<name>`.
+- On the `production` Environment, add two **environment variables**:
+  `AWS_ROLE_ARN` set to the deploy role's ARN
+  (`arn:aws:iam::495504746201:role/keki-prod-oidc-github`) and `AWS_REGION`
+  set to the deploy region (`us-west-2`, matching `sst.config.ts`). Both
+  workflows read them via `vars.*` from whichever environment their job runs
+  in. Spinning up a new account later (e.g. dev) means: new GitHub
+  Environment, its own `AWS_ROLE_ARN` / `AWS_REGION` variables, and a role
+  in that account whose trust policy names the ID-hardened
+  `repo:...:environment:<name>` subject (see the note above).
 
 ## Verifying afterwards
 

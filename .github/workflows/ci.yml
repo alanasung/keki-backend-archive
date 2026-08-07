@@ -29,9 +29,9 @@ env:
   NODE_ENV: test
   COGNITO_ISSUER: https://localhost:3001
   COGNITO_JWKS_URI: https://localhost:3001/.well-known/jwks.json
-  COGNITO_USER_POOL_ID: us-east-1_e2eTestPool
+  COGNITO_USER_POOL_ID: us-west-2_e2eTestPool
   COGNITO_CLIENT_ID: e2e-test-client-id
-  AWS_REGION: us-east-1
+  AWS_REGION: us-west-2
   KIOSK_DEVICE_TOKEN: e2e-test-kiosk-device-token
 
 jobs:

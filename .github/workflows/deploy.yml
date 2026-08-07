@@ -29,9 +29,6 @@ concurrency:
   group: production-deploy
   cancel-in-progress: false
 
-env:
-  AWS_REGION: us-east-1
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -70,15 +67,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # AWS_ROLE_ARN is a variable on the `production` GitHub Environment.
-      # A new environment (e.g. a dev account later) sets its own value —
-      # plus a matching `sub` entry in that role's trust policy (see
-      # docs/aws-iam-request.md "GitHub OIDC deploy role").
+      # AWS_ROLE_ARN and AWS_REGION are variables on the `production` GitHub
+      # Environment — an environment carries its role and region as a pair,
+      # so a new environment (e.g. a dev account later) just sets its own
+      # values, plus a matching `sub` entry in that role's trust policy (see
+      # docs/aws-iam-request.md "GitHub OIDC deploy role"). This action
+      # exports the region to every later step; the infra-side region truth
+      # is sst.config.ts.
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: ${{ vars.AWS_REGION }}
 
       # Migrations run before the deploy, so they must stay backward
       # compatible with the previous app version — rollback is roll-forward

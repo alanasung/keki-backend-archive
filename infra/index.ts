@@ -6,12 +6,6 @@ import { createSecrets } from "./secrets";
 import { createDocumentsBucket } from "./storage";
 import { createWeb } from "./web";
 
-// Must stay in lockstep with the region in sst.config.ts's app() block —
-// that value places the resources, this one tells the app runtime where
-// Cognito lives (sst.config.ts may not import this constant; see the
-// comment there).
-export const AWS_REGION = "us-east-1";
-
 // The only account this stack may deploy to (docs/aws-iam-request.md). SST
 // deploys to whatever account the ambient credentials resolve to, so a
 // developer with the wrong SSO profile active would otherwise silently
@@ -46,7 +40,9 @@ export function createInfra(): {
   createSchedulerRole(queueResources);
   const workers = attachWorkers(queueResources, secrets);
 
-  const web = createWeb({ secrets, auth, region: AWS_REGION });
+  // Derived from the provider, whose region sst.config.ts's app() block
+  // sets — the single place the region is configured.
+  const web = createWeb({ secrets, auth, region: aws.getRegionOutput().apply((r) => r.name) });
 
   return {
     webUrl: web.url,

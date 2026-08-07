@@ -154,6 +154,7 @@ declare namespace sst {
 
 declare namespace aws {
   function getCallerIdentityOutput(args?: Record<string, never>): Output<{ accountId: string }>;
+  function getRegionOutput(args?: Record<string, never>): Output<{ name: string }>;
 
   namespace cognito {
     class UserPoolDomain {

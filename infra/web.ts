@@ -21,7 +21,7 @@ export const WEB_ENV_MAPPING = {
 export interface CreateWebParams {
   readonly secrets: Secrets;
   readonly auth: AuthResources;
-  readonly region: string;
+  readonly region: Input<string>;
 }
 
 export function createWeb(params: CreateWebParams): sst.aws.Nextjs {

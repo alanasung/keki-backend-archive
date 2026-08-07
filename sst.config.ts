@@ -19,7 +19,7 @@ export default $config({
       // places the resources, that one tells the app runtime where Cognito
       // lives. They cannot share a constant because this file may not import
       // infra/ at top level (see above).
-      region: "us-east-1",
+      region: "us-west-2",
       removal: input?.stage === "production" ? "retain" : "remove",
       protect: input?.stage === "production",
     };

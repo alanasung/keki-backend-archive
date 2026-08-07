@@ -20,7 +20,7 @@ producing an `undefined` that surfaces later as a confusing error.
 | `DATABASE_URL_DIRECT` | Yes | `packages/database/src/env.ts` | Neon project dashboard → Connection Details → "Direct connection". Host must **not** contain `-pooler`. |
 | `COGNITO_USER_POOL_ID` | Yes | `packages/auth/src/env.ts` | AWS Cognito console, or `sst dev`/`sst deploy` output once infra is provisioned. |
 | `COGNITO_CLIENT_ID` | Yes | `packages/auth/src/env.ts` | AWS Cognito console (the App Client `apps/web` authenticates against), or SST output. |
-| `AWS_REGION` | Yes | `packages/auth/src/env.ts` | The AWS region the Cognito User Pool lives in (`sst.config.ts` uses `us-east-1`). |
+| `AWS_REGION` | Yes | `packages/auth/src/env.ts` | The AWS region the Cognito User Pool lives in (`sst.config.ts` uses `us-west-2`). |
 | `KIOSK_DEVICE_TOKEN` | No — kiosk routes redirect to sign-in without it, the app still boots | `apps/web/app/auth/guards.ts` (`requireKioskDevice`) | Any string locally; a deployed stage gets it from the `KioskDeviceToken` SST secret. |
 
 ### Linked into individual functions (`functions/*`), not the web app

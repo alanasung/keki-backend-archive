@@ -154,7 +154,7 @@ PENDING and eventually dead-letter via `attempts`.
 
 ## Infrastructure
 
-- **SST v3** (`sst.config.ts`, app name `keki`, region `us-east-1`;
+- **SST v3** (`sst.config.ts`, app name `keki`, region `us-west-2`;
   production stage is `retain`+`protect`). All resources come from `infra/`
   modules — nothing hand-created in the console.
 - **OpenNext** deployment of `apps/web` via `sst.aws.Nextjs` (bundled

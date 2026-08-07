@@ -40,9 +40,7 @@ export function createInfra(): {
   createSchedulerRole(queueResources);
   const workers = attachWorkers(queueResources, secrets);
 
-  // Derived from the provider, whose region sst.config.ts's app() block
-  // sets — the single place the region is configured.
-  const web = createWeb({ secrets, auth, region: aws.getRegionOutput().apply((r) => r.name) });
+  const web = createWeb({ secrets, auth });
 
   return {
     webUrl: web.url,

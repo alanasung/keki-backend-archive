@@ -50,19 +50,20 @@ describe("infra/web.ts environment mapping", () => {
     expect(WEB_ENV_MAPPING.DATABASE_URL_POOLED).not.toBe(WEB_ENV_MAPPING.DATABASE_URL_DIRECT);
   });
 
-  it("links exactly the six application variables, and none of the function-scoped ones", () => {
+  it("links exactly the five application variables, and none of the function-scoped ones", () => {
     expect(Object.keys(WEB_ENV_MAPPING).sort()).toEqual(
       [
         "DATABASE_URL_POOLED",
         "DATABASE_URL_DIRECT",
         "COGNITO_USER_POOL_ID",
         "COGNITO_CLIENT_ID",
-        "AWS_REGION",
         "KIOSK_DEVICE_TOKEN",
       ].sort(),
     );
     expect(Object.keys(WEB_ENV_MAPPING)).not.toContain("SQUARE_WEBHOOK_SIGNATURE_KEY");
     expect(Object.keys(WEB_ENV_MAPPING)).not.toContain("KEKI_ALLOW_NOOP_PROVIDERS");
+    // Reserved Lambda key — CreateFunction rejects it; Lambda injects it.
+    expect(Object.keys(WEB_ENV_MAPPING)).not.toContain("AWS_REGION");
   });
 });
 

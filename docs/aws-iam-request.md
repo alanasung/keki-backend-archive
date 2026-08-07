@@ -121,10 +121,18 @@ aws iam create-open-id-connect-provider \
   --client-id-list sts.amazonaws.com
 ```
 
-**2. Create the deploy role** `keki-github-production-deploy` with this trust
-policy. Both workflows (`deploy.yml` and `deployed-stage-tests.yml`) run
-inside the `production` GitHub Environment, so a single `environment`
-subject covers them and limits the role to approved runs of this repository:
+**2. Create the deploy role** (deployed as `keki-prod-oidc-github`) with this
+trust policy. Both workflows (`deploy.yml` and `deployed-stage-tests.yml`)
+run inside the `production` GitHub Environment, so a single `environment`
+subject covers them and limits the role to approved runs of this repository.
+
+**Note the `sub` format:** GitHub's OIDC tokens use ID-hardened subjects —
+the org and repo names carry their immutable numeric IDs
+(`Keki-Place@310325506`, `keki-backend@1323429224`). The classic
+`repo:Org/Repo:...` pattern from older tutorials does NOT match and fails
+with `Not authorized to perform sts:AssumeRoleWithWebIdentity`. When in
+doubt, the failed attempt's CloudTrail event (`AssumeRoleWithWebIdentity` in
+us-east-1) records the exact subject presented — copy it verbatim:
 
 ```json
 {
@@ -138,10 +146,8 @@ subject covers them and limits the role to approved runs of this repository:
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:Keki-Place/keki-backend:environment:production"
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+          "token.actions.githubusercontent.com:sub": "repo:Keki-Place@310325506/keki-backend@1323429224:environment:production"
         }
       }
     }

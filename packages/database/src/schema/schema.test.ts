@@ -174,11 +174,18 @@ describe.skipIf(!hasLiveDatabase)('integration: migrations and database-level co
   });
 
   it('applies cleanly and creates all thirteen tables', async () => {
+    // No parameter interpolation for the name list: drizzle's sql template
+    // expands a JS array into ($1, ..., $13) — a row constructor, which
+    // `= any(...)` rejects with "op ANY/ALL (array) requires array on right
+    // side". Fetch every public table and filter here instead.
     const result = await db.execute<{ table_name: string }>(sql`
       select table_name from information_schema.tables
-      where table_schema = 'public' and table_name = any(${EXPECTED_TABLE_NAMES})
+      where table_schema = 'public'
     `);
-    const foundNames = result.rows.map((row) => row.table_name).sort();
+    const foundNames = result.rows
+      .map((row) => row.table_name)
+      .filter((name) => EXPECTED_TABLE_NAMES.includes(name))
+      .sort();
     expect(foundNames).toEqual(EXPECTED_TABLE_NAMES);
   });
 

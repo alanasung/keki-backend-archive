@@ -152,7 +152,7 @@ export async function reclaimStaleClaims(input: {
     UPDATE notification_outbox
     SET
       attempts = attempts + 1,
-      status = CASE WHEN attempts + 1 >= ${maxAttempts} THEN 'DEAD' ELSE 'PENDING' END,
+      status = (CASE WHEN attempts + 1 >= ${maxAttempts} THEN 'DEAD' ELSE 'PENDING' END)::notification_status,
       available_at = CASE WHEN attempts + 1 >= ${maxAttempts} THEN available_at ELSE ${now} END,
       claimed_at = NULL,
       claimed_by = NULL

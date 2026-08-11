@@ -277,7 +277,7 @@
       "id": "WS-08",
       "name": "Ordering page: cafe menu and class listing",
       "taskFile": "tasks/phase-2-square-ordering/WS-08-ordering-page.md",
-      "status": "in_progress",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-04",

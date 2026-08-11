@@ -11,6 +11,9 @@ importers:
       '@aws-sdk/client-sqs':
         specifier: ^3.700.0
         version: 3.1105.0
+      '@keki/catalog-core':
+        specifier: workspace:*
+        version: link:packages/catalog-core
       '@keki/contracts':
         specifier: workspace:*
         version: link:packages/contracts
@@ -20,6 +23,9 @@ importers:
       '@keki/notification-core':
         specifier: workspace:*
         version: link:packages/notification-core
+      '@keki/square-client':
+        specifier: workspace:*
+        version: link:packages/square-client
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@neondatabase/serverless@1.1.0)

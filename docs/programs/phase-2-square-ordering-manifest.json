@@ -3,7 +3,7 @@
     "id": "phase-2-square-ordering",
     "name": "Phase 2 Square Ordering",
     "description": "Production Square integration and a customer ordering page: Square Catalog as the menu source of truth, orders with participant-assigned class seats and atomic seat holding, Square-hosted checkout, real webhook signature verification and fulfillment, and database-level reservation capacity enforcement.",
-    "status": "planning",
+    "status": "in_progress",
     "created": "2026-08-10",
     "revision": 2,
     "revisionNote": "Replanned after converge returned requires-replan (2 blockers, 8 majors, critic gpt-5.6-terra). See the Revision history section of the program document."
@@ -173,7 +173,7 @@
       "id": "WS-01",
       "name": "Contracts: catalog, cart, and order types; SeatHolder; widened SquareClient",
       "taskFile": "tasks/phase-2-square-ordering/WS-01-contracts-catalog-orders.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [],
       "packages": [
@@ -184,7 +184,7 @@
       "id": "WS-02",
       "name": "Database: orders, line items, catalog cache, capacity constraint",
       "taskFile": "tasks/phase-2-square-ordering/WS-02-database-orders-capacity.md",
-      "status": "not_started",
+      "status": "in_progress",
       "size": "M",
       "dependencies": [
         "WS-01"

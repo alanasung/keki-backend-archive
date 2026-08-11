@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createReservationId } from '@keki/contracts';
+import { createOrderId } from '@keki/contracts';
 import type { SquareClient } from '@keki/contracts';
 import { capturePayment, refundPayment, startCheckout } from './commands';
 
-const reservationId = createReservationId('11111111-1111-4111-8111-111111111111');
+const orderId = createOrderId('11111111-1111-4111-8111-111111111111');
 
 const squareClient: SquareClient = {
+  listCatalogItems: vi.fn(),
   createCheckout: vi.fn(),
   getPayment: vi.fn(),
   refundPayment: vi.fn(),
@@ -19,8 +20,7 @@ describe('deferred commerce commands', () => {
       () =>
         startCheckout({
           squareClient,
-          reservationId,
-          amountCents: 1000,
+          orderId,
           currency: 'USD',
         }),
     ],

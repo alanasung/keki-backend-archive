@@ -184,7 +184,7 @@
       "id": "WS-02",
       "name": "Database: orders, line items, catalog cache, capacity constraint",
       "taskFile": "tasks/phase-2-square-ordering/WS-02-database-orders-capacity.md",
-      "status": "in_progress",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-01"

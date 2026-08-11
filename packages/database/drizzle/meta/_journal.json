@@ -8,6 +8,20 @@
       "when": 1785982555935,
       "tag": "0000_even_blob",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786421402776,
+      "tag": "0001_chief_gressill",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786421402777,
+      "tag": "0002_capacity_constraint",
+      "breakpoints": true
     }
   ]
 }

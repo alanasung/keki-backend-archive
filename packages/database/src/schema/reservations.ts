@@ -1,4 +1,4 @@
-import { check, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { check, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { reservationStatusEnum } from './enums';
 import { households, customers, children } from './people';
@@ -21,13 +21,21 @@ export const reservations = pgTable(
     status: reservationStatusEnum('status').notNull(),
     holdExpiresAt: timestamp('hold_expires_at', { withTimezone: true }),
     notes: text('notes'),
+    // A reservation can hold more than one seat (a parent booking two
+    // children); counting rows would undercount. Capacity is enforced by
+    // the BEFORE INSERT OR UPDATE trigger in
+    // drizzle/0002_capacity_constraint.sql, which sums seat_count across
+    // active rows for the occurrence under a row lock.
+    seatCount: integer('seat_count').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    // TODO(phase-2): capacity enforcement lives here — a partial unique
-    // index or exclusion constraint on (occurrence_id) counted against
-    // occurrences.capacity_override. Not implemented in Phase 1.
   },
-  (table) => [index('reservations_occurrence_id_status_idx').on(table.occurrenceId, table.status)],
+  (table) => [
+    index('reservations_occurrence_id_status_idx').on(table.occurrenceId, table.status),
+    index('reservations_occurrence_active_idx')
+      .on(table.occurrenceId)
+      .where(sql`status in ('HELD', 'CONFIRMED', 'CHECKED_IN')`),
+  ],
 );
 
 export const reservationParticipants = pgTable(

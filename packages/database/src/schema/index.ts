@@ -1,8 +1,9 @@
 import { relations } from 'drizzle-orm';
 import { staffAuditLog } from './audit';
-import { occurrences, offerings } from './catalog';
+import { catalogItems, occurrences, offerings } from './catalog';
 import { paymentRecords } from './commerce';
 import { waiverRecords } from './compliance';
+import { orderLineItems, orders } from './orders';
 import { playPassLedger, playPasses } from './passes';
 import { children, customers, households } from './people';
 import { reservationParticipants, reservations } from './reservations';
@@ -17,6 +18,7 @@ export * from './compliance';
 export * from './commerce';
 export * from './messaging';
 export * from './audit';
+export * from './orders';
 
 export const householdsRelations = relations(households, ({ one, many }) => ({
   primaryCustomer: one(customers, {
@@ -30,6 +32,7 @@ export const householdsRelations = relations(households, ({ one, many }) => ({
   playPasses: many(playPasses),
   waiverRecords: many(waiverRecords),
   paymentRecords: many(paymentRecords),
+  orders: many(orders),
 }));
 
 export const customersRelations = relations(customers, ({ one, many }) => ({
@@ -88,6 +91,7 @@ export const reservationsRelations = relations(reservations, ({ one, many }) => 
   participants: many(reservationParticipants),
   ledgerEntries: many(playPassLedger),
   paymentRecords: many(paymentRecords),
+  orderLineItems: many(orderLineItems),
 }));
 
 export const reservationParticipantsRelations = relations(reservationParticipants, ({ one }) => ({
@@ -174,5 +178,40 @@ export const staffAuditLogRelations = relations(staffAuditLog, ({ one }) => ({
   actor: one(customers, {
     fields: [staffAuditLog.actorCustomerId],
     references: [customers.id],
+  }),
+}));
+
+export const catalogItemsRelations = relations(catalogItems, ({ many }) => ({
+  orderLineItems: many(orderLineItems),
+}));
+
+export const ordersRelations = relations(orders, ({ one, many }) => ({
+  household: one(households, {
+    fields: [orders.householdId],
+    references: [households.id],
+  }),
+  createdBy: one(customers, {
+    fields: [orders.createdByCustomerId],
+    references: [customers.id],
+  }),
+  lineItems: many(orderLineItems),
+}));
+
+export const orderLineItemsRelations = relations(orderLineItems, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderLineItems.orderId],
+    references: [orders.id],
+  }),
+  catalogItem: one(catalogItems, {
+    fields: [orderLineItems.catalogItemId],
+    references: [catalogItems.id],
+  }),
+  occurrence: one(occurrences, {
+    fields: [orderLineItems.occurrenceId],
+    references: [occurrences.id],
+  }),
+  reservation: one(reservations, {
+    fields: [orderLineItems.reservationId],
+    references: [reservations.id],
   }),
 }));

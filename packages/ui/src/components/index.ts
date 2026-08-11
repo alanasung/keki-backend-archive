@@ -21,3 +21,6 @@ export type { CartSummaryProps, CartSummaryLine } from './cart-summary';
 
 export { ParticipantChecklist } from './participant-checklist';
 export type { ParticipantChecklistProps, ParticipantChecklistOption } from './participant-checklist';
+
+export { OrderSummary } from './order-summary';
+export type { OrderSummaryProps, OrderSummaryLine, OrderSummaryStatus } from './order-summary';

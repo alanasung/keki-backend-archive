@@ -2,6 +2,7 @@ import { CartSummary, PageShell, type CartSummaryLine } from '@keki/ui';
 import { getSessionResult } from '../../auth/require-session';
 import { resolveCart } from './resolve-cart';
 import { RemoveLineButton } from './remove-line-button';
+import { CheckoutButton } from './checkout-button';
 
 // The reviewed subtotal must always reflect the current catalog, never a
 // route-cache snapshot — the same reasoning as WS-08's `/book` page.
@@ -30,9 +31,14 @@ export default async function CartPage() {
       : {}),
   }));
 
+  const hasUnavailableLine = resolved.lines.some((resolvedLine) => !resolvedLine.available);
+
   return (
     <PageShell title="Review your order" description="Confirm your items before checkout.">
-      <CartSummary lines={lines} subtotalCents={resolved.subtotalCents} currency={resolved.currency} />
+      <div className="flex flex-col gap-4">
+        <CartSummary lines={lines} subtotalCents={resolved.subtotalCents} currency={resolved.currency} />
+        {lines.length > 0 && <CheckoutButton disabled={hasUnavailableLine} />}
+      </div>
     </PageShell>
   );
 }

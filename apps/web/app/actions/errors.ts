@@ -7,9 +7,44 @@ import {
 } from '@keki/commerce-core';
 import { CapacityExceededError, InvalidReservationTransitionError } from '@keki/reservation-core';
 import { SquareApiError } from '@keki/square-client';
+import type { CartParticipantRef } from '@keki/contracts';
 import type { ActionError } from './action-result';
 
 const GENERIC_INTERNAL_MESSAGE = 'Something went wrong. Please try again.';
+
+/**
+ * Thrown by checkoutAction (WS-13) when the cart cookie carries zero lines.
+ * The cookie's own schema forbids an empty cart (see cart-cookie.ts), so
+ * this only fires for the sentinel EMPTY_CART a missing or invalid cookie
+ * resolves to — never for a cart that ever reached the cookie's signature
+ * check.
+ */
+export class EmptyCartError extends Error {
+  constructor() {
+    super('Your cart is empty.');
+    this.name = 'EmptyCartError';
+  }
+}
+
+/**
+ * Thrown by checkoutAction (WS-13) when createOrder's authoritative
+ * household check rejects a participant that passed WS-09's cart-time
+ * check — meaning household membership changed after the item was added to
+ * the cart. Deliberately distinct from ParticipantNotInHouseholdError
+ * (which WS-09's own cart actions throw, mapped to VALIDATION below as an
+ * input mistake): at checkout time the same condition means the cart went
+ * stale, the same category as CatalogItemUnavailableError and
+ * OccurrenceNotBookableError, so it maps to CONFLICT instead.
+ */
+export class StaleCartParticipantError extends Error {
+  readonly participant: CartParticipantRef;
+
+  constructor(participant: CartParticipantRef) {
+    super('One of the selected participants is no longer part of your household.');
+    this.name = 'StaleCartParticipantError';
+    this.participant = participant;
+  }
+}
 
 /**
  * Translates a thrown domain error into a customer-safe envelope. Never put
@@ -18,6 +53,14 @@ const GENERIC_INTERNAL_MESSAGE = 'Something went wrong. Please try again.';
  * crosses to the browser. The real error is logged server-side instead.
  */
 export function toActionError(error: unknown): ActionError {
+  if (error instanceof EmptyCartError) {
+    return { code: 'VALIDATION', message: error.message };
+  }
+
+  if (error instanceof StaleCartParticipantError) {
+    return { code: 'CONFLICT', message: error.message };
+  }
+
   if (error instanceof CapacityExceededError) {
     return { code: 'CONFLICT', message: 'That class just sold out.' };
   }

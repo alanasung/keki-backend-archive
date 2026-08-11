@@ -48,12 +48,17 @@ const pageFiles = findPageFiles(appDir);
 // `/auth/*` pages (WS-09) are utility routes for the authorization boundary,
 // not tied to any of the four nav surfaces in `navConfig` — they're asserted
 // separately below rather than folded into the nav-surface route brief.
-// `/book` (WS-08) and `/cart` (WS-09's cart/participants workstream) are the
-// surfaces built out past the placeholder stage, so each is asserted on its
-// own rather than folded into the placeholder brief.
+// `/book` (WS-08), `/cart` (WS-09's cart/participants workstream), and
+// `/orders/[orderId]` (WS-13's status page) are the surfaces built out past
+// the placeholder stage, so each is asserted on its own rather than folded
+// into the placeholder brief.
 const placeholderPageFiles = pageFiles.filter(
   (page) =>
-    page.urlPath !== '/' && page.urlPath !== '/book' && page.urlPath !== '/cart' && !page.urlPath.startsWith('/auth/'),
+    page.urlPath !== '/' &&
+    page.urlPath !== '/book' &&
+    page.urlPath !== '/cart' &&
+    page.urlPath !== '/orders/[orderId]' &&
+    !page.urlPath.startsWith('/auth/'),
 );
 const authPageFiles = pageFiles.filter((page) => page.urlPath.startsWith('/auth/'));
 const surfaces = Object.keys(navConfig) as Array<keyof typeof navConfig>;
@@ -128,9 +133,16 @@ describe('nav-config', () => {
     // establishes the ordering page's Server Components (`listCafeItems`,
     // `listBookableOfferings`) as another; WS-09 adds the cart module
     // (its own Server Actions, cookie codec, and the review page's
-    // server-side price resolution) as a third. Every other page stays a
+    // server-side price resolution) as a third; WS-13 adds the composition
+    // root and the order status page as a fourth. Every other page stays a
     // placeholder.
-    const exemptPrefixes = [`actions${sep}`, `(customer)${sep}book${sep}`, `(customer)${sep}cart${sep}`];
+    const exemptPrefixes = [
+      `actions${sep}`,
+      `(customer)${sep}book${sep}`,
+      `(customer)${sep}cart${sep}`,
+      `(customer)${sep}orders${sep}`,
+      'server-clients',
+    ];
     const sourceFiles = findSourceFiles(appDir).filter(
       (filePath) =>
         !filePath.endsWith('.test.ts') &&

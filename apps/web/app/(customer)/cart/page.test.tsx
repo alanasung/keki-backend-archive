@@ -41,6 +41,11 @@ vi.mock('@keki/auth', async () => {
   const actual = await vi.importActual<typeof import('@keki/auth')>('@keki/auth');
   return { ...actual, authorize: vi.fn() };
 });
+// checkout-action.ts transitively imports the composition root
+// (server-clients.ts), which imports the `server-only` package — this
+// mock keeps that out of this page-rendering test's dependency graph
+// entirely; checkout-action.test.ts covers the action itself.
+vi.mock('./checkout-action', () => ({ checkoutAction: vi.fn() }));
 
 import { listBookableOfferings, listCafeItems } from '@keki/catalog-core';
 import { listHouseholdMembers } from '@keki/customer-core';
@@ -239,9 +244,8 @@ describe('CartPage', () => {
     expect(screen.getByText(/tax is calculated at checkout/i)).toBeInTheDocument();
   });
 
-  // Test 25 — proves the WS-13 boundary: no checkout control anywhere in
-  // this workstream's rendered output or source.
-  it('has no checkout control on the review page', async () => {
+  // WS-13 mounts the checkout control on the review page.
+  it('mounts an enabled checkout control when every line is available', async () => {
     vi.mocked(readCart).mockResolvedValue({
       lines: [{ kind: 'CATALOG_ITEM', catalogItemId: CATALOG_ITEM_ID, quantity: 1 }],
     });
@@ -249,8 +253,26 @@ describe('CartPage', () => {
 
     render(await CartPage());
 
+    expect(screen.getByRole('button', { name: /checkout/i })).toBeEnabled();
+  });
+
+  // WS-13 Implementation Step 4: disabled when any line resolved as
+  // unavailable.
+  it('disables the checkout control when a line is unavailable', async () => {
+    vi.mocked(readCart).mockResolvedValue({
+      lines: [{ kind: 'CATALOG_ITEM', catalogItemId: CATALOG_ITEM_ID, quantity: 1 }],
+    });
+    vi.mocked(listCafeItems).mockResolvedValue([]); // Archived: renders unavailable.
+
+    render(await CartPage());
+
+    expect(screen.getByRole('button', { name: /checkout/i })).toBeDisabled();
+  });
+
+  it('has no checkout control on an empty cart', async () => {
+    render(await CartPage());
+
     expect(screen.queryByRole('button', { name: /checkout/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /checkout/i })).not.toBeInTheDocument();
   });
 
   it("imports no order-creating action from any of this workstream's modules", () => {

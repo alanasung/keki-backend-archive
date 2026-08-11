@@ -364,7 +364,7 @@
       "id": "WS-13",
       "name": "Checkout action, Square composition root, and order status page",
       "taskFile": "tasks/phase-2-square-ordering/WS-13-checkout-composition.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-05",

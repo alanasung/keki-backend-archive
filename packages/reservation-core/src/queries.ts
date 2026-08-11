@@ -1,9 +1,11 @@
 import { eq, sql } from 'drizzle-orm';
 import { db, occurrences, offerings, reservationParticipants, reservations } from '@keki/database';
 import {
+  createChildId,
   createCustomerId,
   createOccurrenceId,
   createReservationId,
+  type CartParticipantRef,
   type HouseholdId,
   type OccurrenceId,
   type Reservation,
@@ -48,6 +50,24 @@ export async function listReservationsForOccurrence(
 ): Promise<readonly Reservation[]> {
   const rows = await db.select().from(reservations).where(eq(reservations.occurrenceId, occurrenceId));
   return rows.map(toReservation);
+}
+
+// Read-side counterpart to `insertHold` (commands.ts), which enforces
+// exactly one of customerId/childId per row at write time — that invariant
+// is what makes the ternary below exhaustive rather than a guess.
+export async function listParticipantsForReservation(
+  reservationId: ReservationId,
+): Promise<readonly CartParticipantRef[]> {
+  const rows = await db
+    .select({ customerId: reservationParticipants.customerId, childId: reservationParticipants.childId })
+    .from(reservationParticipants)
+    .where(eq(reservationParticipants.reservationId, reservationId));
+
+  return rows.map((row) =>
+    row.customerId !== null
+      ? { kind: 'CUSTOMER' as const, customerId: createCustomerId(row.customerId) }
+      : { kind: 'CHILD' as const, childId: createChildId(row.childId!) },
+  );
 }
 
 export async function listReservationsForHousehold(

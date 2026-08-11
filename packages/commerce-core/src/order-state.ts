@@ -57,11 +57,16 @@ export async function transitionOrder(input: {
   if (existing === null) {
     throw new OrderNotFoundError(input.orderId);
   }
-  if (input.expect !== undefined && existing.status !== input.expect) {
-    throw new InvalidOrderTransitionError(input.orderId, existing.status, input.to);
-  }
+  // The idempotent-repeat check must run before the `expect` check: a
+  // redelivered webhook that already landed calls this with the *original*
+  // `expect` (e.g. 'AWAITING_PAYMENT') even though the order has since moved
+  // to `to` (e.g. 'PAID'). Checking `expect` first would reject that repeat
+  // as a mismatch instead of recognizing it as the no-op it is.
   if (existing.status === input.to) {
     return { order: existing, changed: false };
+  }
+  if (input.expect !== undefined && existing.status !== input.expect) {
+    throw new InvalidOrderTransitionError(input.orderId, existing.status, input.to);
   }
   throw new InvalidOrderTransitionError(input.orderId, existing.status, input.to);
 }

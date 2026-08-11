@@ -265,6 +265,15 @@ importers:
       '@keki/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@keki/notification-core':
+        specifier: workspace:*
+        version: link:../../packages/notification-core
+      '@keki/reservation-core':
+        specifier: workspace:*
+        version: link:../../packages/reservation-core
+      '@keki/square-client':
+        specifier: workspace:*
+        version: link:../../packages/square-client
       zod:
         specifier: ^3.25.76
         version: 3.25.76

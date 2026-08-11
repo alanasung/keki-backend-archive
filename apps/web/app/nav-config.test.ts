@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import nextConfig from '../next.config';
@@ -117,7 +117,13 @@ describe('nav-config', () => {
   });
 
   it('no page performs data access', () => {
-    const sourceFiles = findSourceFiles(appDir).filter((filePath) => !filePath.endsWith('.test.ts'));
+    // `app/actions/**` is exempt: per AGENTS.md ("Data access"), domain
+    // packages are imported directly by Server Actions, with no internal
+    // HTTP hop between the app and the core. WS-07 establishes that module
+    // as the sanctioned boundary; every other page stays a placeholder.
+    const sourceFiles = findSourceFiles(appDir).filter(
+      (filePath) => !filePath.endsWith('.test.ts') && !relative(appDir, filePath).startsWith(`actions${sep}`),
+    );
     for (const filePath of sourceFiles) {
       const source = readFileSync(filePath, 'utf-8');
       expect(source).not.toMatch(/@keki\/database/);

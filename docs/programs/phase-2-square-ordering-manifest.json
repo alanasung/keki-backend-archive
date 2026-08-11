@@ -262,7 +262,7 @@
       "id": "WS-07",
       "name": "Server Action foundation and authenticated mutation wrapper",
       "taskFile": "tasks/phase-2-square-ordering/WS-07-server-action-foundation.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "S",
       "dependencies": [
         "WS-01"

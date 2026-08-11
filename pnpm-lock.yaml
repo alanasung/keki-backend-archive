@@ -72,9 +72,18 @@ importers:
       '@keki/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@keki/commerce-core':
+        specifier: workspace:*
+        version: link:../../packages/commerce-core
       '@keki/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@keki/reservation-core':
+        specifier: workspace:*
+        version: link:../../packages/reservation-core
+      '@keki/square-client':
+        specifier: workspace:*
+        version: link:../../packages/square-client
       '@keki/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -87,6 +96,9 @@ importers:
       react-dom:
         specifier: ^19.2.8
         version: 19.2.8(react@19.2.8)
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@eslint/js':
         specifier: ^9.19.0

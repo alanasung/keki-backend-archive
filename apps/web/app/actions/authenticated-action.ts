@@ -1,5 +1,9 @@
-'use server';
-
+// Deliberately NOT a 'use server' module: `authenticatedAction` is a
+// factory — its export is a plain (non-async) function that *returns* an
+// async closure, and Next.js requires every export of a 'use server' file to
+// itself be async. The real Server Actions boundary is each consumer file
+// (e.g. (customer)/cart/actions.ts), which marks itself 'use server' and
+// exports only the async closures this factory produces.
 import { authorize, type AuthorizationOutcome, type Session } from '@keki/auth';
 import type { Role } from '@keki/contracts';
 import type { z } from 'zod';

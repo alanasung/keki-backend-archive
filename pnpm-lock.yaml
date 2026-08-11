@@ -81,6 +81,9 @@ importers:
       '@keki/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@keki/customer-core':
+        specifier: workspace:*
+        version: link:../../packages/customer-core
       '@keki/reservation-core':
         specifier: workspace:*
         version: link:../../packages/reservation-core

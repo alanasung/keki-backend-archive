@@ -3,8 +3,15 @@ import {
   CatalogItemUnavailableError,
   InvalidOrderTransitionError,
   OccurrenceNotBookableError,
+  ParticipantNotInHouseholdError,
 } from '@keki/commerce-core';
-import { createCatalogItemId, createOccurrenceId, createOrderId, createReservationId } from '@keki/contracts';
+import {
+  createCatalogItemId,
+  createCustomerId,
+  createOccurrenceId,
+  createOrderId,
+  createReservationId,
+} from '@keki/contracts';
 import { CapacityExceededError, InvalidReservationTransitionError } from '@keki/reservation-core';
 import { SquareApiError } from '@keki/square-client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -42,6 +49,14 @@ describe('toActionError', () => {
   it('maps OccurrenceNotBookableError to CONFLICT', () => {
     const error = new OccurrenceNotBookableError(FIXTURE_OCCURRENCE_ID);
     expect(toActionError(error).code).toBe('CONFLICT');
+  });
+
+  it('maps ParticipantNotInHouseholdError to VALIDATION', () => {
+    const error = new ParticipantNotInHouseholdError({
+      kind: 'CUSTOMER',
+      customerId: createCustomerId('55555555-5555-4555-8555-555555555555'),
+    });
+    expect(toActionError(error).code).toBe('VALIDATION');
   });
 
   it('maps InvalidOrderTransitionError to CONFLICT', () => {

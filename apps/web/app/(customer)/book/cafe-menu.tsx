@@ -1,9 +1,10 @@
 import { listCafeItems } from '@keki/catalog-core';
 import { CatalogItemCard, EmptyState } from '@keki/ui';
+import { AddToCartButton } from './add-to-cart-button';
 
 // Server Component: fetches its own data, renders a card per item, no
-// 'use client' island and no mutation. The `CatalogItemCard` footer stays
-// unused here — WS-09 wires the cart action into it.
+// 'use client' island and no mutation of its own — `AddToCartButton` in the
+// footer is the client island that owns the add-to-cart mutation.
 export async function CafeMenu() {
   const items = await listCafeItems();
 
@@ -30,6 +31,7 @@ export async function CafeMenu() {
             description={item.description}
             priceCents={item.priceCents}
             currency={item.currency}
+            footer={<AddToCartButton catalogItemId={item.catalogItemId} />}
           />
         ))}
       </div>

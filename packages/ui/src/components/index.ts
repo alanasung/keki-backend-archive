@@ -15,3 +15,9 @@ export type { CatalogItemCardProps } from './catalog-item-card';
 
 export { EmptyState } from './empty-state';
 export type { EmptyStateProps } from './empty-state';
+
+export { CartSummary } from './cart-summary';
+export type { CartSummaryProps, CartSummaryLine } from './cart-summary';
+
+export { ParticipantChecklist } from './participant-checklist';
+export type { ParticipantChecklistProps, ParticipantChecklistOption } from './participant-checklist';

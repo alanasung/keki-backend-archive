@@ -38,7 +38,19 @@ export const cartParticipantRefSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('CHILD'), childId: uuidSchema }).strict(),
 ]);
 
-function participantRefKey(ref: z.infer<typeof cartParticipantRefSchema>): string {
+// Structural rather than `CartParticipantRef` itself so this accepts both
+// the branded form and the plain-string shape `cartParticipantRefSchema`
+// infers before ids are branded — a branded id is always assignable to
+// `string`, never the reverse.
+type ParticipantRefLike =
+  | { readonly kind: 'CUSTOMER'; readonly customerId: string }
+  | { readonly kind: 'CHILD'; readonly childId: string };
+
+// Exported so any package that renders or compares a `CartParticipantRef` —
+// the household picker in @keki/ui, the review page's participant-name
+// lookup, the action's duplicate/foreign-ref checks — keys it the same way
+// instead of re-deriving this format at each call site.
+export function cartParticipantRefKey(ref: ParticipantRefLike): string {
   return ref.kind === 'CUSTOMER' ? `CUSTOMER:${ref.customerId}` : `CHILD:${ref.childId}`;
 }
 
@@ -67,7 +79,7 @@ export const cartLineSchema = z
     if (line.kind !== 'OCCURRENCE') {
       return;
     }
-    const keys = line.participants.map(participantRefKey);
+    const keys = line.participants.map(cartParticipantRefKey);
     if (new Set(keys).size !== keys.length) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

@@ -4,20 +4,34 @@ import { URL as NodeURL, fileURLToPath } from 'node:url';
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SessionResult } from '@keki/auth';
 import {
   createCatalogItemId,
+  createChildId,
+  createCustomerId,
+  createHouseholdId,
   createOccurrenceId,
   createOfferingId,
   type BookableOccurrenceView,
   type CafeItemView,
+  type Child,
+  type Customer,
 } from '@keki/contracts';
 
 vi.mock('@keki/catalog-core', () => ({
   listCafeItems: vi.fn(),
   listBookableOfferings: vi.fn(),
 }));
+vi.mock('@keki/customer-core', () => ({
+  listHouseholdMembers: vi.fn(),
+}));
+vi.mock('../../auth/require-session', () => ({
+  getSessionResult: vi.fn(),
+}));
 
 import { listBookableOfferings, listCafeItems } from '@keki/catalog-core';
+import { listHouseholdMembers } from '@keki/customer-core';
+import { getSessionResult } from '../../auth/require-session';
 import { CafeMenu } from './cafe-menu';
 import { ClassListing } from './class-listing';
 import BookPage from './page';
@@ -62,6 +76,55 @@ function createDeferred<T>(): { promise: Promise<T>; resolve: (value: T) => void
   return { promise, resolve };
 }
 
+const SESSION_HOUSEHOLD_ID = createHouseholdId('22222222-2222-4222-8222-222222222222');
+
+// ClassListing (WS-09) loads the session household's members for the
+// participant picker footer — a fixture every describe block below that
+// renders ClassListing (directly or via BookPage) needs, even when the
+// test itself has nothing to do with participants.
+const AUTHENTICATED_SESSION_RESULT: SessionResult = {
+  kind: 'authenticated',
+  session: {
+    cognitoSub: 'cognito-sub-1',
+    profile: {
+      customerId: createCustomerId('11111111-1111-4111-8111-111111111111'),
+      householdId: SESSION_HOUSEHOLD_ID,
+      email: 'ada@example.com',
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      role: 'CUSTOMER',
+    },
+  },
+};
+
+function fixtureCustomer(overrides: Partial<Customer> = {}): Customer {
+  return {
+    id: createCustomerId('11111111-1111-4111-8111-111111111111'),
+    householdId: SESSION_HOUSEHOLD_ID,
+    cognitoSub: 'cognito-sub-1',
+    email: 'ada@example.com',
+    firstName: 'Ada',
+    lastName: 'Lovelace',
+    phone: null,
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+    ...overrides,
+  };
+}
+
+function fixtureChild(overrides: Partial<Child> = {}): Child {
+  return {
+    id: createChildId(crypto.randomUUID()),
+    householdId: SESSION_HOUSEHOLD_ID,
+    firstName: 'Grace',
+    lastName: 'Hopper',
+    dateOfBirth: new Date('2018-01-01'),
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+    ...overrides,
+  };
+}
+
 describe('CafeMenu', () => {
   beforeEach(() => {
     vi.mocked(listCafeItems).mockReset();
@@ -97,6 +160,8 @@ describe('ClassListing', () => {
   beforeEach(() => {
     vi.mocked(listCafeItems).mockReset();
     vi.mocked(listBookableOfferings).mockReset();
+    vi.mocked(getSessionResult).mockReset().mockResolvedValue(AUTHENTICATED_SESSION_RESULT);
+    vi.mocked(listHouseholdMembers).mockReset().mockResolvedValue({ customers: [], children: [] });
   });
 
   it('lists occurrences with time, price, and seats', async () => {
@@ -169,12 +234,68 @@ describe('ClassListing', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent(/no classes scheduled/i);
   });
+
+  // Test 16
+  it('offers only the session household in the participant picker, never a member of another household', async () => {
+    vi.mocked(listBookableOfferings).mockResolvedValue([occurrence()]);
+    vi.mocked(listHouseholdMembers).mockResolvedValue({
+      customers: [fixtureCustomer()],
+      children: [fixtureChild({ firstName: 'Grace' }), fixtureChild({ firstName: 'Alan' })],
+    });
+
+    render(await ClassListing());
+
+    expect(listHouseholdMembers).toHaveBeenCalledWith(SESSION_HOUSEHOLD_ID);
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+    expect(screen.getByRole('checkbox', { name: /Ada Lovelace/ })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Grace/ })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /Alan/ })).toBeInTheDocument();
+  });
+
+  // Test 17
+  it('offers the account holder as the only option when the household has no children', async () => {
+    vi.mocked(listBookableOfferings).mockResolvedValue([occurrence()]);
+    vi.mocked(listHouseholdMembers).mockResolvedValue({ customers: [fixtureCustomer()], children: [] });
+
+    render(await ClassListing());
+
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+    expect(screen.getByRole('checkbox', { name: /Ada Lovelace/ })).toBeInTheDocument();
+  });
+
+  // Test 18
+  it('derives the seat count in the picker from the selection, with no quantity input', async () => {
+    vi.mocked(listBookableOfferings).mockResolvedValue([occurrence({ seatsRemaining: 8 })]);
+    vi.mocked(listHouseholdMembers).mockResolvedValue({
+      customers: [fixtureCustomer()],
+      children: [fixtureChild({ firstName: 'Grace' })],
+    });
+
+    render(await ClassListing());
+
+    screen.getByRole('checkbox', { name: /Ada Lovelace/ }).click();
+    screen.getByRole('checkbox', { name: /Grace/ }).click();
+
+    expect(screen.getByText('2 seats selected')).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+  });
+
+  it('omits the picker for a sold-out occurrence', async () => {
+    vi.mocked(listBookableOfferings).mockResolvedValue([occurrence({ seatsRemaining: 0 })]);
+    vi.mocked(listHouseholdMembers).mockResolvedValue({ customers: [fixtureCustomer()], children: [] });
+
+    render(await ClassListing());
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
 });
 
 describe('BookPage', () => {
   beforeEach(() => {
     vi.mocked(listCafeItems).mockReset();
     vi.mocked(listBookableOfferings).mockReset();
+    vi.mocked(getSessionResult).mockReset().mockResolvedValue(AUTHENTICATED_SESSION_RESULT);
+    vi.mocked(listHouseholdMembers).mockReset().mockResolvedValue({ customers: [], children: [] });
   });
 
   it('renders both the cafe menu and the class listing', async () => {

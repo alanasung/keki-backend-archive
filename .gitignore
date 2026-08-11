@@ -31,6 +31,7 @@ next-env.d.ts
 coverage/
 playwright-report/
 test-results/
+vitest-report.json
 
 # Generated once per machine by apps/web/e2e/fixtures/jwks-server.ts: the
 # RSA signing key and the self-signed TLS certificate/key the local JWKS

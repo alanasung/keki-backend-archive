@@ -1,8 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 import { CA_CERT_PATH, ensureKeyMaterial, ISSUER, JWKS_URI } from './apps/web/e2e/fixtures/jwks-server';
 import {
+  APP_BASE_URL,
   AWS_REGION,
   BASE_URL,
+  CART_COOKIE_SECRET,
   COGNITO_CLIENT_ID,
   COGNITO_USER_POOL_ID,
   KIOSK_DEVICE_TOKEN,
@@ -62,6 +64,13 @@ export default defineConfig({
       // Trusts the JWKS server's self-signed certificate — see jwks-server.ts's
       // `ISSUER` doc comment for why the JWKS endpoint is HTTPS at all.
       NODE_EXTRA_CA_CERTS: CA_CERT_PATH,
+      // WS-12: the e2e run must never contact Square. `getSquareClient`
+      // (apps/web/app/server-clients.ts) refuses this flag with
+      // NODE_ENV=production, and NODE_ENV is 'test' above, so this is safe —
+      // see server-clients.test.ts's "refuses the stub with NODE_ENV=production".
+      KEKI_ALLOW_SQUARE_STUB: 'true',
+      CART_COOKIE_SECRET,
+      APP_BASE_URL,
     },
   },
 });

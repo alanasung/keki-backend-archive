@@ -198,7 +198,7 @@
       "id": "WS-03",
       "name": "square-client: production Square adapter and signature verification",
       "taskFile": "tasks/phase-2-square-ordering/WS-03-square-client.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "L",
       "dependencies": [
         "WS-01"

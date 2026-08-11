@@ -536,6 +536,39 @@ describe.skipIf(!hasLiveDatabase)('integration: migrations and database-level co
   });
 
   describe('reservations capacity constraint', () => {
+    // The trigger's SQLSTATE surfaces at different depths depending on who
+    // issued the statement: a raw node-postgres client rejects with the
+    // driver's `DatabaseError` carrying a top-level `.code`, while Drizzle
+    // wraps that in a `DrizzleQueryError` and leaves the SQLSTATE on
+    // `.cause`. Asserting a fixed shape passes for one path and fails for
+    // the other, so match on either by walking the chain — the same thing
+    // `isCapacityExceededError` in @keki/reservation-core does.
+    function capacitySqlStateOf(error: unknown): string | undefined {
+      let current: unknown = error;
+      for (let depth = 0; depth < 8; depth += 1) {
+        if (typeof current !== 'object' || current === null) {
+          return undefined;
+        }
+        const code = (current as { code?: unknown }).code;
+        if (typeof code === 'string') {
+          return code;
+        }
+        current = (current as { cause?: unknown }).cause;
+      }
+      return undefined;
+    }
+
+    async function expectCapacityRejection(promise: Promise<unknown>): Promise<void> {
+      let caught: unknown;
+      try {
+        await promise;
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught, 'expected the capacity trigger to reject this insert').toBeDefined();
+      expect(capacitySqlStateOf(caught)).toBe('KEKI1');
+    }
+
     async function insertReservation(
       occurrenceId: string,
       householdId: string,
@@ -569,9 +602,9 @@ describe.skipIf(!hasLiveDatabase)('integration: migrations and database-level co
       await insertReservation(occurrence.id, household.id, customer.id, 'CONFIRMED');
       await insertReservation(occurrence.id, household.id, customer.id, 'CONFIRMED');
 
-      await expect(
+      await expectCapacityRejection(
         insertReservation(occurrence.id, household.id, customer.id, 'CONFIRMED'),
-      ).rejects.toMatchObject({ code: 'KEKI1' });
+      );
     });
 
     it('sums seat_count rather than counting rows', async () => {
@@ -581,9 +614,9 @@ describe.skipIf(!hasLiveDatabase)('integration: migrations and database-level co
 
       await insertReservation(occurrence.id, household.id, customer.id, 'CONFIRMED', 3);
 
-      await expect(
+      await expectCapacityRejection(
         insertReservation(occurrence.id, household.id, customer.id, 'CONFIRMED', 1),
-      ).rejects.toMatchObject({ code: 'KEKI1' });
+      );
     });
 
     it('resolves effective capacity from capacity_override before default_capacity', async () => {
@@ -610,9 +643,9 @@ describe.skipIf(!hasLiveDatabase)('integration: migrations and database-level co
         'CONFIRMED',
       );
 
-      await expect(
+      await expectCapacityRejection(
         insertReservation(occurrence.id, household.id, customer.id, 'CONFIRMED'),
-      ).rejects.toMatchObject({ code: 'KEKI1' });
+      );
 
       await db
         .update(reservations)
@@ -631,9 +664,9 @@ describe.skipIf(!hasLiveDatabase)('integration: migrations and database-level co
 
       await insertReservation(occurrence.id, household.id, customer.id, 'HELD');
 
-      await expect(
+      await expectCapacityRejection(
         insertReservation(occurrence.id, household.id, customer.id, 'CONFIRMED'),
-      ).rejects.toMatchObject({ code: 'KEKI1' });
+      );
     });
 
     it('does not double-count the row being updated when moving HELD to CONFIRMED at capacity', async () => {
@@ -696,7 +729,7 @@ describe.skipIf(!hasLiveDatabase)('integration: migrations and database-level co
 
           await clientA.query('COMMIT');
 
-          await expect(pendingB).rejects.toMatchObject({ code: 'KEKI1' });
+          await expectCapacityRejection(pendingB);
           await clientB.query('ROLLBACK').catch(() => undefined);
         } finally {
           clientA.release();

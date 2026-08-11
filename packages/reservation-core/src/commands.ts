@@ -22,19 +22,45 @@ const DEFAULT_HOLD_TTL_MINUTES = 15;
 
 // Stable SQLSTATE the WS-02 trigger raises (drizzle/0002_capacity_constraint.sql)
 // rather than a message string, so this never breaks if the message wording
-// changes. Works against both drivers this package touches — neon-http's
-// `NeonDbError` and node-postgres's `DatabaseError` (used by the Pool-backed
-// transaction in @keki/database's `withTransaction`) both surface the
-// SQLSTATE as `.code`.
+// changes.
 const CAPACITY_EXCEEDED_SQLSTATE = 'KEKI1';
 
+// Maximum cause-chain depth to inspect. Bounded so a self-referential or
+// pathologically deep `cause` chain cannot spin here.
+const MAX_CAUSE_DEPTH = 8;
+
+/**
+ * True when `error`, or anything in its `cause` chain, carries the capacity
+ * SQLSTATE.
+ *
+ * The chain walk is the load-bearing part. The raw driver errors —
+ * neon-http's `NeonDbError` and node-postgres's `DatabaseError` — do expose
+ * the SQLSTATE as a top-level `.code`, but Drizzle does not surface those
+ * directly: it wraps them in a `DrizzleQueryError` whose own `.code` is
+ * absent, leaving the SQLSTATE one level down on `.cause`.
+ *
+ * Checking only the top level therefore returns `false` for a genuine
+ * capacity rejection on every Drizzle-issued insert, which is every insert
+ * this package makes. The failure is quiet and expensive: `holdReservation`
+ * rethrows the raw `DrizzleQueryError` instead of `CapacityExceededError`,
+ * the Server Action error mapper does not recognize it, and a customer
+ * booking a full class is told something went wrong rather than that the
+ * class sold out.
+ */
 function isCapacityExceededError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: unknown }).code === CAPACITY_EXCEEDED_SQLSTATE
-  );
+  let current: unknown = error;
+
+  for (let depth = 0; depth < MAX_CAUSE_DEPTH; depth += 1) {
+    if (typeof current !== 'object' || current === null) {
+      return false;
+    }
+    if ((current as { code?: unknown }).code === CAPACITY_EXCEEDED_SQLSTATE) {
+      return true;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+
+  return false;
 }
 
 interface InsertHoldInput {

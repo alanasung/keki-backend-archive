@@ -3,6 +3,7 @@ import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { isKnownTaskKey, scheduledTaskMessageSchema, type NotificationMessage } from '@keki/contracts';
 import { syncCatalog } from '@keki/catalog-core';
 import { createSquareClient } from '@keki/square-client';
+import { expireStaleHolds } from '@keki/reservation-core';
 
 const sqsClient = new SQSClient({});
 
@@ -39,6 +40,14 @@ async function runCatalogSync(): Promise<void> {
   await syncCatalog({ squareClient });
 }
 
+// This is what makes HELD safe to sell against at all (SC-09) — see
+// reservation-core/src/expiry.ts. Logged so CloudWatch has a record of the
+// sweep even when it reclaims nothing.
+async function runExpireStaleHolds(): Promise<void> {
+  const expired = await expireStaleHolds();
+  console.log(`scheduled-task-worker: expired ${expired} stale reservation hold(s).`);
+}
+
 // The EventBridge Scheduler role from WS-10's real target. Scheduling policy
 // (which tasks run when) stays in Phase 2 — this handler just narrows a
 // known task key to a real action.
@@ -63,6 +72,9 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
           break;
         case 'catalog.sync':
           await runCatalogSync();
+          break;
+        case 'reservation.expire-holds':
+          await runExpireStaleHolds();
           break;
         default: {
           const unhandled: never = taskKey;

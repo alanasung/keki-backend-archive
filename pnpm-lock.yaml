@@ -198,6 +198,9 @@ importers:
       '@keki/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@keki/reservation-core':
+        specifier: workspace:*
+        version: link:../../packages/reservation-core
       '@keki/square-client':
         specifier: workspace:*
         version: link:../../packages/square-client

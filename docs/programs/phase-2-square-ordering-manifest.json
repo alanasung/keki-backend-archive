@@ -246,7 +246,7 @@
       "id": "WS-06",
       "name": "reservation-core: capacity enforcement, holds, and expiry",
       "taskFile": "tasks/phase-2-square-ordering/WS-06-reservation-capacity.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "L",
       "dependencies": [
         "WS-02"

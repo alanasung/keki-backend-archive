@@ -1,4 +1,12 @@
-build-logs/
+# Build-runner output. The program-pipeline runner explicitly `git add`s
+# `build-logs` during its per-workstream commit, and git refuses to stage an
+# explicitly-named path that is wholly ignored — which silently turned every
+# workstream commit into a no-op. So track the runner's own structured
+# artifacts and keep everything else here (local scratch scripts, deploy and
+# supervisor logs) out of version control.
+build-logs/*
+!build-logs/*.jsonl
+!build-logs/*-baselines.json
 
 # Dependencies
 node_modules/

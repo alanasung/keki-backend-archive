@@ -212,7 +212,7 @@
       "id": "WS-04",
       "name": "catalog-core: catalog cache sync and read paths",
       "taskFile": "tasks/phase-2-square-ordering/WS-04-catalog-core.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-02",

@@ -61,7 +61,7 @@ export type SquareWebhookMessage = z.infer<typeof squareWebhookMessageSchema>;
 // to handle. Kept separate from the envelope schema (see above) so the
 // worker's switch can be exhaustive over `KnownTaskKey` with a `never`
 // default while the envelope itself still accepts any string.
-export const KNOWN_TASK_KEYS = ['notification.drain'] as const;
+export const KNOWN_TASK_KEYS = ['notification.drain', 'catalog.sync'] as const;
 export type KnownTaskKey = (typeof KNOWN_TASK_KEYS)[number];
 
 export function isKnownTaskKey(value: string): value is KnownTaskKey {

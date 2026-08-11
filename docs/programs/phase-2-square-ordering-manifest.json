@@ -229,7 +229,7 @@
       "id": "WS-05",
       "name": "commerce-core: order lifecycle, seat holding, and real startCheckout",
       "taskFile": "tasks/phase-2-square-ordering/WS-05-order-lifecycle.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "L",
       "dependencies": [
         "WS-02",

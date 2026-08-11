@@ -362,6 +362,9 @@ importers:
       '@eslint/js':
         specifier: ^9.19.0
         version: 9.39.5
+      '@keki/reservation-core':
+        specifier: workspace:*
+        version: link:../reservation-core
       eslint:
         specifier: ^9.19.0
         version: 9.39.5(jiti@2.7.0)

@@ -48,8 +48,10 @@ const pageFiles = findPageFiles(appDir);
 // `/auth/*` pages (WS-09) are utility routes for the authorization boundary,
 // not tied to any of the four nav surfaces in `navConfig` — they're asserted
 // separately below rather than folded into the nav-surface route brief.
+// `/book` (WS-08) is the first surface built out past the placeholder stage,
+// so it's asserted on its own rather than folded into the placeholder brief.
 const placeholderPageFiles = pageFiles.filter(
-  (page) => page.urlPath !== '/' && !page.urlPath.startsWith('/auth/'),
+  (page) => page.urlPath !== '/' && page.urlPath !== '/book' && !page.urlPath.startsWith('/auth/'),
 );
 const authPageFiles = pageFiles.filter((page) => page.urlPath.startsWith('/auth/'));
 const surfaces = Object.keys(navConfig) as Array<keyof typeof navConfig>;
@@ -86,7 +88,6 @@ describe('nav-config', () => {
 
   it('the route tree matches the brief', () => {
     const expectedUrlPaths = new Set([
-      '/book',
       '/account',
       '/kiosk/book',
       '/kiosk/waiver',
@@ -98,7 +99,7 @@ describe('nav-config', () => {
       '/admin/reservations',
       '/admin/customers',
     ]);
-    expect(placeholderPageFiles).toHaveLength(11);
+    expect(placeholderPageFiles).toHaveLength(10);
     expect(new Set(placeholderPageFiles.map((page) => page.urlPath))).toEqual(expectedUrlPaths);
   });
 
@@ -117,12 +118,20 @@ describe('nav-config', () => {
   });
 
   it('no page performs data access', () => {
-    // `app/actions/**` is exempt: per AGENTS.md ("Data access"), domain
-    // packages are imported directly by Server Actions, with no internal
-    // HTTP hop between the app and the core. WS-07 establishes that module
-    // as the sanctioned boundary; every other page stays a placeholder.
+    // `app/actions/**` and `(customer)/book/**` are exempt: per AGENTS.md
+    // ("Data access"), domain packages are imported directly by Server
+    // Actions and by the read-only Server Components that render them, with
+    // no internal HTTP hop between the app and the core. WS-07 establishes
+    // the actions module as one sanctioned boundary; WS-08 establishes the
+    // ordering page's Server Components (`listCafeItems`,
+    // `listBookableOfferings`) as another. Every other page stays a
+    // placeholder.
+    const exemptPrefixes = [`actions${sep}`, `(customer)${sep}book${sep}`];
     const sourceFiles = findSourceFiles(appDir).filter(
-      (filePath) => !filePath.endsWith('.test.ts') && !relative(appDir, filePath).startsWith(`actions${sep}`),
+      (filePath) =>
+        !filePath.endsWith('.test.ts') &&
+        !filePath.endsWith('.test.tsx') &&
+        !exemptPrefixes.some((prefix) => relative(appDir, filePath).startsWith(prefix)),
     );
     for (const filePath of sourceFiles) {
       const source = readFileSync(filePath, 'utf-8');

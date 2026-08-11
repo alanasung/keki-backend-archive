@@ -13,7 +13,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['app/**/*.test.ts', 'middleware.test.ts'],
+    include: ['app/**/*.test.ts', 'app/**/*.test.tsx', 'middleware.test.ts'],
     // Importing `@keki/auth`'s package root (as `guards.ts` and
     // `require-session.ts` do) transitively evaluates `@keki/database`,
     // which resolves and validates its Neon connection strings at

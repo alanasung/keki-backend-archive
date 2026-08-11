@@ -1,0 +1,119 @@
+import { listBookableOfferings } from '@keki/catalog-core';
+import type { BookableOccurrenceView } from '@keki/contracts';
+import { CatalogItemCard, EmptyState } from '@keki/ui';
+
+// `occurrences.starts_at` is stored as `timestamptz` specifically so a
+// class scheduled across a DST boundary still shows the right local hour
+// (see packages/database/src/schema/catalog.ts). Rendering in the
+// server's zone or in UTC would show customers the wrong time twice a
+// year, so every formatter below is pinned to this single named constant.
+const CAFE_TIME_ZONE = 'America/Los_Angeles';
+
+// Below this many seats, surface a hint so a customer doesn't lose a race
+// they could have won by clicking sooner. This number is stale the moment
+// it's read — WS-02's capacity trigger is the real check, and WS-09 must
+// still handle a CONFLICT from a sold-out race.
+const LOW_SEAT_THRESHOLD = 3;
+
+const dayKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: CAFE_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const dayHeadingFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAFE_TIME_ZONE,
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+});
+
+const startTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: CAFE_TIME_ZONE,
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
+type DayGroup = readonly [dayKey: string, occurrences: readonly BookableOccurrenceView[]];
+
+function groupByDay(occurrences: readonly BookableOccurrenceView[]): readonly DayGroup[] {
+  const groups = new Map<string, BookableOccurrenceView[]>();
+
+  for (const occurrence of occurrences) {
+    const dayKey = dayKeyFormatter.format(occurrence.startsAt);
+    const existing = groups.get(dayKey);
+    if (existing === undefined) {
+      groups.set(dayKey, [occurrence]);
+    } else {
+      existing.push(occurrence);
+    }
+  }
+
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(
+      ([dayKey, dayOccurrences]) =>
+        [dayKey, [...dayOccurrences].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())] as const,
+    );
+}
+
+function seatAvailabilityLabel(seatsRemaining: number): string {
+  if (seatsRemaining <= 0) {
+    return 'Sold out';
+  }
+  if (seatsRemaining <= LOW_SEAT_THRESHOLD) {
+    return `Only ${seatsRemaining} seat${seatsRemaining === 1 ? '' : 's'} left`;
+  }
+  return `${seatsRemaining} seats left`;
+}
+
+// Server Component: fetches its own data, groups by local calendar day, no
+// 'use client' island and no mutation. Seat counts are display-only —
+// WS-02's trigger is the authoritative check.
+export async function ClassListing() {
+  const occurrences = await listBookableOfferings();
+
+  if (occurrences.length === 0) {
+    return (
+      <section aria-label="Classes" className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-surface-900">Classes</h2>
+        <EmptyState title="No classes scheduled" description="New classes haven't been published yet." />
+      </section>
+    );
+  }
+
+  const groups = groupByDay(occurrences);
+
+  return (
+    <section aria-label="Classes" className="flex flex-col gap-6">
+      <h2 className="text-lg font-semibold text-surface-900">Classes</h2>
+      {groups.map(([dayKey, dayOccurrences]) => (
+        <div key={dayKey} className="flex flex-col gap-4">
+          <h3 className="text-sm font-semibold text-surface-700">
+            {dayHeadingFormatter.format(dayOccurrences[0]!.startsAt)}
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {dayOccurrences.map((occurrence) => (
+              <div key={occurrence.occurrenceId} className="flex flex-col gap-2">
+                <p className="text-xs font-medium text-surface-500">
+                  <time dateTime={occurrence.startsAt.toISOString()}>
+                    {startTimeFormatter.format(occurrence.startsAt)}
+                  </time>
+                </p>
+                <CatalogItemCard
+                  name={occurrence.name}
+                  description={occurrence.description}
+                  priceCents={occurrence.priceCents}
+                  currency={occurrence.currency}
+                  footer={<span className="text-xs text-surface-600">{seatAvailabilityLabel(occurrence.seatsRemaining)}</span>}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}

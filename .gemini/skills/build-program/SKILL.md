@@ -1,0 +1,134 @@
+---
+name: build-program
+description: Execute a program's dependency-ordered workstreams through the packaged build runner with validation, confirmation, independent verification, and status tracking. Use when a user asks to build, execute, or resume a planned program.
+argument-hint: "[program-id]"
+disable-model-invocation: true
+---
+<!-- program-pipeline:sha256=0a8e40fd38f7ae5082ccded975b51c80ad9b38276356d2aa4fd3a86d2e6d8c49 -->
+
+# Build Program
+
+Execute a program's workstreams through the packaged build runner.
+
+## Step 1 — Identify the program
+
+Use the supplied program ID. If none was provided, ask which program to build and wait for the answer.
+
+## Step 2 — Check the pipeline configuration
+
+Read `pipeline.config.json` in the project root. The runner requires:
+
+- **`agent`** — the agent CLI that implements each workstream, for example:
+
+  ```json
+  "agent": { "command": "claude", "args": ["-p"], "promptMode": "stdin" }
+  ```
+
+  The runner delivers each workstream prompt on stdin by default — prefer
+  stdin whenever the agent CLI supports it. Use `"promptMode": "argument"`
+  only when the agent requires a positional prompt; argument mode spawns the
+  command directly without a shell, so on Windows it cannot launch `.cmd`
+  shims — the command must be a real executable. If prompt delivery ever
+  appears broken (agents acting as if they received no instructions), check
+  this setting first. The `PROGRAM_PIPELINE_AGENT_COMMAND` environment
+  variable works as a fallback when no `agent` block exists.
+
+- **`verify`** — the commands the runner executes itself after every
+  workstream, for example:
+
+  ```json
+  "verify": { "build": "npm run build", "test": "npm test" }
+  ```
+
+  Verification is independent: a workstream passes only when every verify
+  command exits successfully, regardless of what the agent reports.
+
+If either block is missing, show the user what to add and wait for approval
+before editing `pipeline.config.json`.
+
+**Model transparency:** the `agent` block is the single source of truth for
+which agent and model build every workstream. State it verbatim to the user
+in this step — for example "each workstream will be built by
+`claude -p --model sonnet`" — and note that changing it means editing the
+`agent` block. The runner also prints the resolved agent line in its dry-run
+and approval output; never let a build start without the user having seen
+it.
+
+If a build fails because the agent CLI rejects the configured model as
+unavailable, obsolete, or renamed, propose the current equivalent, update
+the `agent` block in `pipeline.config.json` after the user approves, and
+resume the build — never work around it by invoking the agent manually.
+
+If a `build-product.ps1` exists in the project root, it is a legacy runner
+from a previous package version — ignore it, never invoke or update it, and
+suggest deleting it.
+
+## Step 3 — Show the execution plan
+
+Run a dry run and present the output:
+
+```sh
+npm exec program-pipeline -- build "{program-id}" --dry-run
+```
+
+The plan lists workstreams in dependency order and marks the ones already
+skipped as `complete`. Summarize total count, execution order, and any
+skipped workstreams.
+
+## Step 4 — Confirm and execute
+
+Ask the user to confirm the plan. After confirmation, run:
+
+```sh
+npm exec program-pipeline -- build "{program-id}" --yes
+```
+
+To resume from a specific workstream regardless of status, add
+`--start-from {ws-id}`. Otherwise the runner automatically skips workstreams
+whose manifest status is already `complete`.
+
+The runner performs, per workstream:
+
+1. Mark the workstream `in_progress` in the manifest.
+2. Invoke the configured agent with the workstream prompt.
+3. Run every `verify` command itself; a failed verify command is retried
+   in place first (configurable via `build.verifyRetries`, default 1, which
+   absorbs flaky tests), and a persistent failure triggers one focused
+   recovery attempt (configurable via `build.maxRecoveryAttempts`).
+4. Mark the workstream `complete` or `failed` and append structured JSON
+   events to `build-logs/{program-id}-build-{timestamp}.jsonl`.
+
+A failed workstream stops the build with a nonzero exit code.
+
+The runner also owns the program-level status in the manifest: `planning` →
+`in_progress` when execution starts, then `complete` when every workstream
+is complete or `failed` when the build stops on a failure (a successful
+resume flips it back to `complete`). Do not edit program or workstream
+statuses by hand.
+
+Two failure modes resolve themselves on re-run — recognize them instead of
+debugging the workstream:
+
+- **Agent environment failure** (the reason names it): the agent CLI died
+  at startup — usually a usage/rate limit ("session limit" in the output
+  tail) or a credential problem. The workstream was not attempted; re-run
+  the build once the agent CLI is healthy and it resumes from that
+  workstream.
+- **No-op with prior work**: when a previous attempt already landed the
+  implementation, a re-run agent that changes nothing proceeds to
+  verification automatically (the runner compares against the tree
+  fingerprint from the workstream's first attempt, persisted in
+  `build-logs/{program-id}-baselines.json`) — already-implemented work
+  verifies and completes without manual manifest edits.
+
+## Step 5 — Report
+
+Report from the runner output and the events log:
+
+- Which workstreams completed, with attempt counts.
+- Which workstream failed, the failing verify command, and the log path
+  (`build-logs/{program-id}-{ws-id}.log`).
+- Whether the build is resumable (`--start-from` or re-run to skip completed
+  workstreams).
+- Next step after a full pass: run the program review or update the as-built
+  snapshot.

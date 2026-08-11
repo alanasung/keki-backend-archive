@@ -4,7 +4,7 @@ description: Validate a program's workstream specifications for completeness, co
 argument-hint: "[program-id] [--fix] [--strict] [--validator-model <model>] [--report-json]"
 disable-model-invocation: true
 ---
-<!-- program-pipeline:sha256=cb7d746f169e98402acfdb3196117d33c5d24bb5052a18ba1c89eb38bdf7d060 -->
+<!-- program-pipeline:sha256=9230afc0b02c698d9f584e5d8181d3b2ff2098b0c4d084d513cc6e7a282a9148 -->
 
 # Validate Workstreams
 
@@ -28,7 +28,12 @@ Parse these optional flags from the invocation arguments:
 When no `--validator-model` flag is given, default to `models.validator` from
 `pipeline.config.json` when the host can run it; when it cannot, fall back to
 the `validatorAgent` command from the config, run as a separate process with
-the validation instructions and all context piped to it. State which model is
+the validation instructions and all context piped to it. `models.validator`
+is host-neutral intent — resolve it to the nearest concrete model the host
+offers (or, for the external mechanism, to a model identifier the external
+CLI accepts, passed via that CLI's model flag), state the mapping, and never
+rewrite the config with host-specific slugs or hardcode a model flag into
+`validatorAgent.args`. State which model is
 validating and which mechanism runs it (in-host or external agent). If the
 requested validator model is unavailable through both mechanisms, stop and
 ask the user to choose a supported model.
@@ -94,7 +99,9 @@ Classify every finding as `blocker`, `major`, or `minor`.
 - Any workstream with zero traceability mapping.
 - Dependency references to non-existent workstream IDs.
 - Cycles in the dependency graph.
-- Missing `Files Touched` annotations `(NEW)` or `(MODIFY)`.
+- Missing `Files Touched` annotations `(NEW)` or `(MODIFY)` on bulleted file
+  entries. A short note after the keyword is allowed (`(MODIFY — extend
+  props)`), and non-bullet lines are commentary, not file entries.
 
 ### Major checks
 

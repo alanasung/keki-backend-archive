@@ -4,7 +4,7 @@ description: Author every workstream specification for a program and run the sta
 argument-hint: "<program-id> [--no-validate | --validate-only | --fix-and-validate] [--author-model <id>] [--validator-model <id>]"
 disable-model-invocation: true
 ---
-<!-- program-pipeline:sha256=cc15cc5403398149f4d5b23be23f9aecb73422a8cd193d2cecca56807e550d8d -->
+<!-- program-pipeline:sha256=d9876bcd0e05b44d2aa33f55aef476c803eeb7bb2e8a23fc50ae19d29cd406eb -->
 
 # Author workstreams
 
@@ -34,10 +34,21 @@ works in the current host:
    `pipeline.config.json`, run as a separate process — pipe it the
    validation instructions plus the spec, manifest, and program document
    contents, since it shares no session context (billing flows through that
-   CLI's own account). This is how a cross-provider validator works from
-   hosts that cannot switch providers.
+   CLI's own account). Resolve `models.validator` into that CLI's own model
+   namespace and pass it explicitly via the CLI's model flag (for example
+   `codex exec --model <resolved-slug>`); never rely on the external CLI's
+   default model silently, and never expect the CLI to understand the
+   host-neutral intent string verbatim. This is how a cross-provider
+   validator works from hosts that cannot switch providers.
 4. Otherwise: validate with the current model and report the validation as
    same-model rather than independent.
+
+Entries in `models` are host-neutral intent (for example `opus-5`, `sol`),
+not host-specific slugs. Resolve each to the nearest concrete model the
+current host offers and state the mapping (for example "author `opus-5` →
+`claude-opus-5-thinking-high` in this host"). Do not offer to rewrite
+`pipeline.config.json` with host-specific slugs — the config must stay
+host-neutral so every host and teammate can resolve it.
 
 Before authoring, state which model fills each role, where the choice came
 from (flag, config, external agent, or default), and which mechanism will
@@ -120,7 +131,10 @@ Do not include other workstream specs or program documents.]
 [Target package or directory.]
 
 ## Files Touched
-[Every file marked `(NEW)` or `(MODIFY)`.]
+[One list item per touched file: `- \`path/to/file.ts\` (NEW)` or
+`(MODIFY — optional short note)`. Only list items are validated as file
+entries; keep context about untouched files in prose or blockquotes, not
+bullets.]
 
 ## Existing Interfaces to Consume
 [Paste 10–30 lines of the actual interfaces consumed from existing code.

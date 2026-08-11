@@ -4,7 +4,7 @@ description: Execute a program's dependency-ordered workstreams through the pack
 argument-hint: "[program-id]"
 disable-model-invocation: true
 ---
-<!-- program-pipeline:sha256=e3b8815d85667573b3da0297765a7f8a628655d8fb95a0513a0508ff81f22984 -->
+<!-- program-pipeline:sha256=0a8e40fd38f7ae5082ccded975b51c80ad9b38276356d2aa4fd3a86d2e6d8c49 -->
 
 # Build Program
 
@@ -24,9 +24,13 @@ Read `pipeline.config.json` in the project root. The runner requires:
   "agent": { "command": "claude", "args": ["-p"], "promptMode": "stdin" }
   ```
 
-  The runner delivers each workstream prompt on stdin by default; set
-  `"promptMode": "argument"` for agents that expect the prompt as the final
-  positional argument. The `PROGRAM_PIPELINE_AGENT_COMMAND` environment
+  The runner delivers each workstream prompt on stdin by default — prefer
+  stdin whenever the agent CLI supports it. Use `"promptMode": "argument"`
+  only when the agent requires a positional prompt; argument mode spawns the
+  command directly without a shell, so on Windows it cannot launch `.cmd`
+  shims — the command must be a real executable. If prompt delivery ever
+  appears broken (agents acting as if they received no instructions), check
+  this setting first. The `PROGRAM_PIPELINE_AGENT_COMMAND` environment
   variable works as a fallback when no `agent` block exists.
 
 - **`verify`** — the commands the runner executes itself after every
@@ -87,12 +91,35 @@ The runner performs, per workstream:
 
 1. Mark the workstream `in_progress` in the manifest.
 2. Invoke the configured agent with the workstream prompt.
-3. Run every `verify` command itself; any failure triggers one focused
+3. Run every `verify` command itself; a failed verify command is retried
+   in place first (configurable via `build.verifyRetries`, default 1, which
+   absorbs flaky tests), and a persistent failure triggers one focused
    recovery attempt (configurable via `build.maxRecoveryAttempts`).
 4. Mark the workstream `complete` or `failed` and append structured JSON
    events to `build-logs/{program-id}-build-{timestamp}.jsonl`.
 
 A failed workstream stops the build with a nonzero exit code.
+
+The runner also owns the program-level status in the manifest: `planning` →
+`in_progress` when execution starts, then `complete` when every workstream
+is complete or `failed` when the build stops on a failure (a successful
+resume flips it back to `complete`). Do not edit program or workstream
+statuses by hand.
+
+Two failure modes resolve themselves on re-run — recognize them instead of
+debugging the workstream:
+
+- **Agent environment failure** (the reason names it): the agent CLI died
+  at startup — usually a usage/rate limit ("session limit" in the output
+  tail) or a credential problem. The workstream was not attempted; re-run
+  the build once the agent CLI is healthy and it resumes from that
+  workstream.
+- **No-op with prior work**: when a previous attempt already landed the
+  implementation, a re-run agent that changes nothing proceeds to
+  verification automatically (the runner compares against the tree
+  fingerprint from the workstream's first attempt, persisted in
+  `build-logs/{program-id}-baselines.json`) — already-implemented work
+  verifies and completes without manual manifest edits.
 
 ## Step 5 — Report
 

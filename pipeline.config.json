@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pipelineVersion": "0.3.2",
+  "pipelineVersion": "0.8.0",
   "visionPath": "docs/vision.md",
   "requireApprovalBeforeBuild": true,
   "agent": {
@@ -19,5 +19,11 @@
     "test": "pnpm -r test",
     "build": "pnpm -r build"
   },
-  "contextDocs": ["docs/vision.md"]
+  "contextDocs": [
+    "docs/vision.md",
+    "docs/as-built.md",
+    "docs/architecture.md",
+    "docs/environment.md",
+    "docs/testing.md"
+  ]
 }

@@ -1,0 +1,41 @@
+{"timestamp":"2026-08-06T01:44:53.924Z","event":"build-start","programId":"phase-1-scaffold","plan":[{"id":"WS-01","name":"Monorepo foundation and toolchain","taskFile":"tasks/phase-1-scaffold/WS-01-monorepo-foundation.md","action":"run"},{"id":"WS-02","name":"Contracts: domain types and integration interfaces","taskFile":"tasks/phase-1-scaffold/WS-02-contracts.md","action":"run"},{"id":"WS-03","name":"Database: Drizzle schema, migrations, dual connections","taskFile":"tasks/phase-1-scaffold/WS-03-database.md","action":"run"},{"id":"WS-04","name":"Auth: Cognito identity and Postgres role model","taskFile":"tasks/phase-1-scaffold/WS-04-auth.md","action":"run"},{"id":"WS-05","name":"UI: Tailwind preset and shared layout primitives","taskFile":"tasks/phase-1-scaffold/WS-05-ui.md","action":"run"},{"id":"WS-06","name":"Domain cores: reservation, customer, pass","taskFile":"tasks/phase-1-scaffold/WS-06-booking-domain-cores.md","action":"run"},{"id":"WS-07","name":"Domain cores: commerce, notification","taskFile":"tasks/phase-1-scaffold/WS-07-commerce-notification-cores.md","action":"run"},{"id":"WS-08","name":"Next.js app shell and four route groups","taskFile":"tasks/phase-1-scaffold/WS-08-app-shell.md","action":"run"},{"id":"WS-09","name":"Route protection and role gating","taskFile":"tasks/phase-1-scaffold/WS-09-route-protection.md","action":"run"},{"id":"WS-10","name":"SST infrastructure and AWS resources","taskFile":"tasks/phase-1-scaffold/WS-10-sst-infrastructure.md","action":"run"},{"id":"WS-11","name":"Lambda workers and queue wiring","taskFile":"tasks/phase-1-scaffold/WS-11-lambda-workers.md","action":"run"},{"id":"WS-12","name":"Test harness and CI pipeline","taskFile":"tasks/phase-1-scaffold/WS-12-test-harness-ci.md","action":"run"},{"id":"WS-13","name":"Environment setup documentation","taskFile":"tasks/phase-1-scaffold/WS-13-environment-docs.md","action":"run"}],"agentCommand":"claude","verify":["workspace","typecheck","lint","test","build"]}
+{"timestamp":"2026-08-06T01:44:53.925Z","event":"workstream-start","id":"WS-01","name":"Monorepo foundation and toolchain"}
+{"timestamp":"2026-08-06T01:51:43.354Z","event":"agent-exit","id":"WS-01","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-06T01:51:43.355Z","event":"verify-start","id":"WS-01","attempt":1,"name":"workspace"}
+{"timestamp":"2026-08-06T01:51:43.362Z","event":"verify-result","id":"WS-01","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0}
+{"timestamp":"2026-08-06T01:51:43.362Z","event":"verify-start","id":"WS-01","attempt":1,"name":"typecheck"}
+{"timestamp":"2026-08-06T01:51:43.549Z","event":"verify-result","id":"WS-01","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0}
+{"timestamp":"2026-08-06T01:51:43.549Z","event":"verify-start","id":"WS-01","attempt":1,"name":"lint"}
+{"timestamp":"2026-08-06T01:51:43.738Z","event":"verify-result","id":"WS-01","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0}
+{"timestamp":"2026-08-06T01:51:43.738Z","event":"verify-start","id":"WS-01","attempt":1,"name":"test"}
+{"timestamp":"2026-08-06T01:51:43.921Z","event":"verify-result","id":"WS-01","attempt":1,"name":"test","command":"pnpm -r test","exitCode":0}
+{"timestamp":"2026-08-06T01:51:43.921Z","event":"verify-start","id":"WS-01","attempt":1,"name":"build"}
+{"timestamp":"2026-08-06T01:51:44.102Z","event":"verify-result","id":"WS-01","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0}
+{"timestamp":"2026-08-06T01:51:44.103Z","event":"workstream-complete","id":"WS-01","attempts":1}
+{"timestamp":"2026-08-06T01:51:44.103Z","event":"workstream-start","id":"WS-02","name":"Contracts: domain types and integration interfaces"}
+{"timestamp":"2026-08-06T01:57:40.853Z","event":"agent-exit","id":"WS-02","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-06T01:57:40.855Z","event":"verify-start","id":"WS-02","attempt":1,"name":"workspace"}
+{"timestamp":"2026-08-06T01:57:40.861Z","event":"verify-result","id":"WS-02","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0}
+{"timestamp":"2026-08-06T01:57:40.861Z","event":"verify-start","id":"WS-02","attempt":1,"name":"typecheck"}
+{"timestamp":"2026-08-06T01:57:41.405Z","event":"verify-result","id":"WS-02","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0}
+{"timestamp":"2026-08-06T01:57:41.406Z","event":"verify-start","id":"WS-02","attempt":1,"name":"lint"}
+{"timestamp":"2026-08-06T01:57:42.374Z","event":"verify-result","id":"WS-02","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0}
+{"timestamp":"2026-08-06T01:57:42.374Z","event":"verify-start","id":"WS-02","attempt":1,"name":"test"}
+{"timestamp":"2026-08-06T01:57:43.064Z","event":"verify-result","id":"WS-02","attempt":1,"name":"test","command":"pnpm -r test","exitCode":0}
+{"timestamp":"2026-08-06T01:57:43.065Z","event":"verify-start","id":"WS-02","attempt":1,"name":"build"}
+{"timestamp":"2026-08-06T01:57:43.610Z","event":"verify-result","id":"WS-02","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0}
+{"timestamp":"2026-08-06T01:57:43.611Z","event":"workstream-complete","id":"WS-02","attempts":1}
+{"timestamp":"2026-08-06T01:57:43.611Z","event":"workstream-start","id":"WS-03","name":"Database: Drizzle schema, migrations, dual connections"}
+{"timestamp":"2026-08-06T02:21:17.491Z","event":"agent-exit","id":"WS-03","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-06T02:21:17.492Z","event":"verify-start","id":"WS-03","attempt":1,"name":"workspace"}
+{"timestamp":"2026-08-06T02:21:17.497Z","event":"verify-result","id":"WS-03","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0}
+{"timestamp":"2026-08-06T02:21:17.497Z","event":"verify-start","id":"WS-03","attempt":1,"name":"typecheck"}
+{"timestamp":"2026-08-06T02:21:19.048Z","event":"verify-result","id":"WS-03","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0}
+{"timestamp":"2026-08-06T02:21:19.049Z","event":"verify-start","id":"WS-03","attempt":1,"name":"lint"}
+{"timestamp":"2026-08-06T02:21:21.634Z","event":"verify-result","id":"WS-03","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0}
+{"timestamp":"2026-08-06T02:21:21.634Z","event":"verify-start","id":"WS-03","attempt":1,"name":"test"}
+{"timestamp":"2026-08-06T02:21:23.014Z","event":"verify-result","id":"WS-03","attempt":1,"name":"test","command":"pnpm -r test","exitCode":0}
+{"timestamp":"2026-08-06T02:21:23.015Z","event":"verify-start","id":"WS-03","attempt":1,"name":"build"}
+{"timestamp":"2026-08-06T02:21:24.602Z","event":"verify-result","id":"WS-03","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0}
+{"timestamp":"2026-08-06T02:21:24.603Z","event":"workstream-complete","id":"WS-03","attempts":1}
+{"timestamp":"2026-08-06T02:21:24.604Z","event":"workstream-start","id":"WS-04","name":"Auth: Cognito identity and Postgres role model"}

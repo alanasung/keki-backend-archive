@@ -1,6 +1,8 @@
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { isKnownTaskKey, scheduledTaskMessageSchema, type NotificationMessage } from '@keki/contracts';
+import { syncCatalog } from '@keki/catalog-core';
+import { createSquareClient } from '@keki/square-client';
 
 const sqsClient = new SQSClient({});
 
@@ -28,6 +30,15 @@ async function enqueueNotificationDrain(): Promise<void> {
   );
 }
 
+// The worker is the composition root: it constructs the real Square client
+// and hands it to syncCatalog by parameter, so catalog-core itself never
+// depends on @keki/square-client (see AGENTS.md "Module boundaries").
+// syncCatalog logs its own outcome counts for CloudWatch.
+async function runCatalogSync(): Promise<void> {
+  const squareClient = createSquareClient();
+  await syncCatalog({ squareClient });
+}
+
 // The EventBridge Scheduler role from WS-10's real target. Scheduling policy
 // (which tasks run when) stays in Phase 2 — this handler just narrows a
 // known task key to a real action.
@@ -49,6 +60,9 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
       switch (taskKey) {
         case 'notification.drain':
           await enqueueNotificationDrain();
+          break;
+        case 'catalog.sync':
+          await runCatalogSync();
           break;
         default: {
           const unhandled: never = taskKey;

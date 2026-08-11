@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.700.0",
-    "@keki/contracts": "workspace:*"
+    "@keki/catalog-core": "workspace:*",
+    "@keki/contracts": "workspace:*",
+    "@keki/square-client": "workspace:*"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

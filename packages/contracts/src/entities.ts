@@ -1,11 +1,14 @@
 import { z } from 'zod';
 import type {
+  CatalogItemId,
   ChildId,
   CustomerId,
   HouseholdId,
   NotificationOutboxEntryId,
   OccurrenceId,
   OfferingId,
+  OrderId,
+  OrderLineItemId,
   PaymentRecordId,
   PlayPassId,
   PlayPassLedgerEntryId,
@@ -62,6 +65,15 @@ export type NotificationStatus = (typeof NOTIFICATION_STATUSES)[number];
 
 export const WAIVER_STATUSES = ['SIGNED', 'EXPIRED', 'REVOKED'] as const;
 export type WaiverStatus = (typeof WAIVER_STATUSES)[number];
+
+export const ORDER_STATUSES = ['DRAFT', 'AWAITING_PAYMENT', 'PAID', 'CANCELLED', 'EXPIRED'] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+export const ORDER_LINE_ITEM_KINDS = ['CATALOG_ITEM', 'OCCURRENCE'] as const;
+export type OrderLineItemKind = (typeof ORDER_LINE_ITEM_KINDS)[number];
+
+export const CATALOG_ITEM_STATUSES = ['ACTIVE', 'ARCHIVED'] as const;
+export type CatalogItemStatus = (typeof CATALOG_ITEM_STATUSES)[number];
 
 // ---------------------------------------------------------------------------
 // Entity types — shared shapes; WS-03 derives the Drizzle tables to match.
@@ -182,6 +194,52 @@ export interface PaymentRecord {
   providerPaymentId: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CatalogItem {
+  id: CatalogItemId;
+  squareCatalogObjectId: string;
+  squareVariationId: string;
+  name: string;
+  description: string | null;
+  priceCents: number;
+  currency: string;
+  status: CatalogItemStatus;
+  syncedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Order {
+  id: OrderId;
+  householdId: HouseholdId;
+  createdByCustomerId: CustomerId;
+  status: OrderStatus;
+  // "Subtotal", never "total" — Square owns tax and computes the
+  // authoritative charge. A field named totalCents would invite treating
+  // this number as the amount charged.
+  subtotalCents: number;
+  currency: string;
+  squareOrderId: string | null;
+  squareCheckoutUrl: string | null;
+  providerPaymentId: string | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OrderLineItem {
+  id: OrderLineItemId;
+  orderId: OrderId;
+  kind: OrderLineItemKind;
+  catalogItemId: CatalogItemId | null;
+  occurrenceId: OccurrenceId | null;
+  reservationId: ReservationId | null;
+  quantity: number;
+  // Captured at order time, so a later catalog sync cannot retroactively
+  // rewrite what a customer was charged.
+  unitPriceCents: number;
+  nameSnapshot: string;
 }
 
 export interface NotificationOutboxEntry {

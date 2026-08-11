@@ -5,14 +5,13 @@
 // the bodies defer to Phase 2.
 
 import { NotImplementedInPhase1 } from '@keki/contracts';
-import type { PaymentRecord, ReservationId, SquareClient } from '@keki/contracts';
+import type { OrderId, PaymentRecord, SquareClient } from '@keki/contracts';
 
 export function startCheckout(input: {
   squareClient: SquareClient;
-  reservationId: ReservationId;
-  amountCents: number;
+  orderId: OrderId;
   currency: string;
-}): Promise<{ checkoutUrl: string; providerPaymentId: string }> {
+}): Promise<{ checkoutUrl: string; squareOrderId: string }> {
   void input;
   return Promise.reject(new NotImplementedInPhase1('startCheckout'));
 }

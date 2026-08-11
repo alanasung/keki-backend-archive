@@ -1,10 +1,10 @@
 ---
 name: build-program
-description: Execute a program's dependency-ordered workstreams through the packaged build runner with validation, confirmation, independent verification, and status tracking. Use when a user asks to build, execute, or resume a planned program.
+description: Execute a program's dependency-ordered workstreams through the packaged build runner with validation, independent verification, per-workstream commits, and status tracking. Use when a user asks to build, execute, or resume a planned program.
 argument-hint: "[program-id]"
 disable-model-invocation: true
 ---
-<!-- program-pipeline:sha256=0a8e40fd38f7ae5082ccded975b51c80ad9b38276356d2aa4fd3a86d2e6d8c49 -->
+<!-- program-pipeline:sha256=5ae1879474871793e7ee073093501a7cd8c5a15b23897813022431a33b9a6c5f -->
 
 # Build Program
 
@@ -46,6 +46,17 @@ Read `pipeline.config.json` in the project root. The runner requires:
 If either block is missing, show the user what to add and wait for approval
 before editing `pipeline.config.json`.
 
+Two optional keys change how this skill behaves:
+
+- **`requireApprovalBeforeBuild`** (default `false` for projects initialized
+  by this package) — the only approval gate. See Step 4.
+- **`build.commit`** (default `true`) — the runner commits each workstream
+  itself after verification passes. See Step 4.
+- **`build.critiqueTests`** (default `false`) — after verification passes and
+  before the commit, hand the workstream's diff to the `validatorAgent` and
+  ask whether the tests would actually catch a wrong implementation. See
+  Step 4.
+
 **Model transparency:** the `agent` block is the single source of truth for
 which agent and model build every workstream. State it verbatim to the user
 in this step — for example "each workstream will be built by
@@ -75,13 +86,20 @@ The plan lists workstreams in dependency order and marks the ones already
 skipped as `complete`. Summarize total count, execution order, and any
 skipped workstreams.
 
-## Step 4 — Confirm and execute
+## Step 4 — Execute
 
-Ask the user to confirm the plan. After confirmation, run:
+Invoking this workflow *is* the instruction to build. Do not ask the user to
+confirm the plan — report it (Step 3) and start the build in the same turn:
 
 ```sh
 npm exec program-pipeline -- build "{program-id}" --yes
 ```
+
+The single exception: when `requireApprovalBeforeBuild` is `true` in
+`pipeline.config.json`, the user has explicitly asked to approve every build —
+present the plan and wait. Otherwise stopping to ask is friction the user has
+already opted out of. Ask mid-build only about a genuine blocker (a missing
+config block, an ambiguous program ID, a failure needing a decision).
 
 To resume from a specific workstream regardless of status, add
 `--start-from {ws-id}`. Otherwise the runner automatically skips workstreams
@@ -97,8 +115,48 @@ The runner performs, per workstream:
    recovery attempt (configurable via `build.maxRecoveryAttempts`).
 4. Mark the workstream `complete` or `failed` and append structured JSON
    events to `build-logs/{program-id}-build-{timestamp}.jsonl`.
+5. Commit the working tree as `build({program-id}): {ws-id} {name}`.
 
 A failed workstream stops the build with a nonzero exit code.
+
+### Test critique
+
+Verification proves the implementation and its tests agree — but the same
+agent wrote both, so a green suite is the two halves of one opinion. With
+`build.critiqueTests` enabled, the runner hands the diff and the spec to the
+`validatorAgent`, which wrote neither, and asks whether a plausible wrong
+implementation would pass, whether every acceptance criterion has a test that
+could fail, whether failure paths are reached, and whether any test was
+weakened or deleted to make the suite green.
+
+This **annotates and never blocks**. A commit that passed independent
+verification still lands; the findings go to the events log
+(`test-critique`) and the build result, where you report them. A model
+judgment is not a strong enough signal to stall an unattended build, and
+blocking would need a rewrite-and-recheck loop that may never settle. If you
+want a failing critique to stop the build, that is a change to request
+explicitly — it is not the current behavior.
+
+It requires a `validatorAgent`; without one the runner logs
+`test-critique-skipped` and continues.
+
+### Commits
+
+The runner owns commits — workstream agents are told never to commit. One
+commit per workstream, written only after independent verification passes, so
+every runner-authored commit is green. Set `build.commit` to `false`, or pass
+`--no-commit`, to build without committing.
+
+Because those commits must never absorb unrelated work, the runner refuses to
+start when the working tree is dirty. If a build aborts for that reason,
+report the listed paths and offer to commit or stash them — do not pass
+`--no-commit` to route around it unless the user asks. The one dirty tree the
+runner does accept is the uncommitted work its own previous failed run left
+behind, so resuming after a failure works untouched.
+
+A commit that git itself refuses (a hook, a missing `user.email`) is reported
+as `commit failed` and leaves the verified changes in the working tree; the
+workstream still counts as complete.
 
 The runner also owns the program-level status in the manifest: `planning` →
 `in_progress` when execution starts, then `complete` when every workstream
@@ -125,9 +183,11 @@ debugging the workstream:
 
 Report from the runner output and the events log:
 
-- Which workstreams completed, with attempt counts.
+- Which workstreams completed, with attempt counts and commit SHAs.
 - Which workstream failed, the failing verify command, and the log path
   (`build-logs/{program-id}-{ws-id}.log`).
+- Any test-critique findings, grouped by workstream. These are advisory and
+  did not block the commit; present them so the user can decide what to fix.
 - Whether the build is resumable (`--start-from` or re-run to skip completed
   workstreams).
 - Next step after a full pass: run the program review or update the as-built

@@ -1,13 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
-import { KNOWN_TASK_KEYS, type KnownTaskKey } from '@keki/contracts';
+import { isKnownTaskKey, KNOWN_TASK_KEYS, type KnownTaskKey } from '@keki/contracts';
 
-const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn().mockResolvedValue({}) }));
+const { sendMock, syncCatalogMock, createSquareClientMock } = vi.hoisted(() => ({
+  sendMock: vi.fn().mockResolvedValue({}),
+  syncCatalogMock: vi.fn().mockResolvedValue({ upserted: 0, archived: 0, pages: 0 }),
+  createSquareClientMock: vi.fn().mockReturnValue({}),
+}));
 
 vi.mock('@aws-sdk/client-sqs', () => ({
   SQSClient: vi.fn().mockImplementation(() => ({ send: sendMock })),
   SendMessageCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
 }));
+
+vi.mock('@keki/catalog-core', () => ({ syncCatalog: syncCatalogMock }));
+vi.mock('@keki/square-client', () => ({ createSquareClient: createSquareClientMock }));
 
 import { handler } from './handler';
 
@@ -45,6 +52,8 @@ function scheduledTaskEnvelope(taskKey: string): string {
 
 beforeEach(() => {
   sendMock.mockClear();
+  syncCatalogMock.mockClear();
+  createSquareClientMock.mockClear();
   process.env['NOTIFICATION_QUEUE_URL'] = 'https://sqs.example.com/queue/NotificationQueue';
 });
 
@@ -85,6 +94,20 @@ describe('handler', () => {
 
     expect(Array.isArray(result.batchItemFailures)).toBe(true);
   });
+
+  it('dispatches catalog.sync: constructs the Square client and calls syncCatalog', async () => {
+    const result = await handler(sqsEvent([makeRecord('m1', scheduledTaskEnvelope('catalog.sync'))]));
+
+    expect(result.batchItemFailures).toEqual([]);
+    expect(createSquareClientMock).toHaveBeenCalledTimes(1);
+    expect(syncCatalogMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('catalog.sync task key', () => {
+  it('is a known task key', () => {
+    expect(isKnownTaskKey('catalog.sync')).toBe(true);
+  });
 });
 
 // Type-level exhaustiveness guard (test 11): proves the handler's switch is
@@ -99,6 +122,7 @@ type ExtendedTaskKey = KnownTaskKey | 'extra.stale.task';
 function exhaustiveOverKnownTaskKeys(taskKey: ExtendedTaskKey): string {
   switch (taskKey) {
     case 'notification.drain':
+    case 'catalog.sync':
       return 'handled';
     default: {
       // @ts-expect-error - ExtendedTaskKey has a member ('extra.stale.task')

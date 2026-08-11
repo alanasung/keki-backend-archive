@@ -1,0 +1,395 @@
+{
+  "program": {
+    "id": "phase-2-square-ordering",
+    "name": "Phase 2 Square Ordering",
+    "description": "Production Square integration and a customer ordering page: Square Catalog as the menu source of truth, orders with participant-assigned class seats and atomic seat holding, Square-hosted checkout, real webhook signature verification and fulfillment, and database-level reservation capacity enforcement.",
+    "status": "in_progress",
+    "created": "2026-08-10",
+    "revision": 2,
+    "revisionNote": "Replanned after converge returned requires-replan (2 blockers, 8 majors, critic gpt-5.6-terra). See the Revision history section of the program document."
+  },
+  "technology": {
+    "squareSdk": "square (official Node SDK, pinned)",
+    "checkout": "Square-hosted Checkout / Payment Links",
+    "catalogStrategy": "Postgres cache, scheduled refresh + catalog.version.updated invalidation",
+    "cartStorage": "Signed HTTP-only cookie, amounts recomputed server-side",
+    "totals": "Square computes the authoritative order total including tax",
+    "capacityEnforcement": "Postgres constraint + serialized transaction",
+    "coreComposition": "Injected ports (SeatHolder) rather than core-to-core imports",
+    "mutationSurface": "Next.js Server Actions (first use in this codebase)",
+    "notificationUrl": "Per-stage secret with a post-deploy assertion against the Function URL"
+  },
+  "successCriteria": [
+    {
+      "id": "SC-01",
+      "description": "The ordering page lists cafe items sourced from the Square Catalog cache, with name, description, and price."
+    },
+    {
+      "id": "SC-02",
+      "description": "The ordering page lists published class occurrences with start time, price, and remaining seats."
+    },
+    {
+      "id": "SC-03",
+      "description": "A signed-in customer can add cafe items and a class seat to a cart and see a correct recomputed total."
+    },
+    {
+      "id": "SC-04",
+      "description": "Submitting a cart with a tampered price or amount is rejected; the order is created from server-side amounts only."
+    },
+    {
+      "id": "SC-05",
+      "description": "Checkout redirects to a Square-hosted payment page for the created order."
+    },
+    {
+      "id": "SC-06",
+      "description": "A signed payment webhook moves its matching order to PAID and writes exactly one payment_records row."
+    },
+    {
+      "id": "SC-07",
+      "description": "A paid order containing a class seat confirms its reservation; the seat is no longer offered."
+    },
+    {
+      "id": "SC-08",
+      "description": "Two concurrent holds on a one-seat occurrence yield exactly one held seat, and after payment exactly one confirmed reservation."
+    },
+    {
+      "id": "SC-09",
+      "description": "An expired hold releases its seat and returns it to the available count."
+    },
+    {
+      "id": "SC-10",
+      "description": "Webhook signature verification implements Square's notification-URL-plus-body scheme and rejects a forged signature."
+    },
+    {
+      "id": "SC-11",
+      "description": "The Square webhook Function URL is publicly reachable and rejects unsigned requests."
+    },
+    {
+      "id": "SC-12",
+      "description": "Catalog sync runs on schedule and on catalog.version.updated, upserting new items and tombstoning removed ones."
+    },
+    {
+      "id": "SC-13",
+      "description": "Replaying the same payment webhook, or resuming it after a mid-fulfillment crash, produces exactly one payment record and one fulfillment."
+    },
+    {
+      "id": "SC-14",
+      "description": "Server Actions reject unauthenticated callers through the shared authorize predicate."
+    },
+    {
+      "id": "SC-15",
+      "description": "Playwright covers browse to participant selection to cart to checkout redirect against a stubbed Square client."
+    },
+    {
+      "id": "SC-16",
+      "description": "docs/environment.md documents every new secret and the sandbox/production credential split."
+    },
+    {
+      "id": "SC-17",
+      "description": "Each class seat is assigned to a named household member, and the reservation records that participant."
+    },
+    {
+      "id": "SC-18",
+      "description": "A participant from another household is rejected server-side."
+    },
+    {
+      "id": "SC-19",
+      "description": "Order creation and seat holding are atomic: neither a seatless paid order nor an orderless hold can result."
+    },
+    {
+      "id": "SC-20",
+      "description": "A sandbox payment completed end to end delivers a signed webhook that fulfills its order."
+    }
+  ],
+  "packages": [
+    {
+      "name": "square-client",
+      "path": "packages/square-client",
+      "description": "NEW. Production implementation of the SquareClient interface wrapping the Square SDK: catalog reads, payment links, payment retrieval, refunds, and Square's real webhook signature verification. The only workspace member depending on the Square SDK."
+    },
+    {
+      "name": "catalog-core",
+      "path": "packages/catalog-core",
+      "description": "NEW. Catalog cache sync and read paths: cafe items from the Square cache plus published offerings joined to upcoming occurrences with remaining seat counts."
+    },
+    {
+      "name": "contracts",
+      "path": "packages/contracts",
+      "description": "Adds catalog, cart, and order types; the participant-carrying occurrence cart line; the SeatHolder port; widens SquareClient.createCheckout off its reservationId assumption and adds notificationUrl to signature verification."
+    },
+    {
+      "name": "database",
+      "path": "packages/database",
+      "description": "Adds orders, order_line_items, and catalog_items tables, plus the reservations capacity trigger and seat_count column deferred in Phase 1."
+    },
+    {
+      "name": "commerce-core",
+      "path": "packages/commerce-core",
+      "description": "Order lifecycle, server-side price resolution, atomic seat holding through the injected SeatHolder port, and the real startCheckout replacing the Phase 1 stub."
+    },
+    {
+      "name": "reservation-core",
+      "path": "packages/reservation-core",
+      "description": "Real holdReservation, confirmReservation, and cancelReservation with database-level capacity enforcement, a transaction-accepting signature, and the hold-expiry sweep."
+    },
+    {
+      "name": "customer-core",
+      "path": "packages/customer-core",
+      "description": "Consumed unchanged; listHouseholdMembers supplies the participant picker."
+    },
+    {
+      "name": "web",
+      "path": "apps/web",
+      "description": "The ordering page, cart with participant selection, checkout action, the server-only composition root, the order status page, and the first Server Actions in the codebase."
+    },
+    {
+      "name": "ui",
+      "path": "packages/ui",
+      "description": "Presentational primitives for catalog items, participant selection, cart lines, and order review."
+    },
+    {
+      "name": "auth",
+      "path": "packages/auth",
+      "description": "Consumed unchanged; the Server Action wrapper calls its existing authorize predicate rather than reading tokens directly."
+    },
+    {
+      "name": "square-webhook",
+      "path": "functions/square-webhook",
+      "description": "Real signature verification at the HTTP entry point and retry-safe order and reservation fulfillment in the consumer."
+    },
+    {
+      "name": "scheduled-task-worker",
+      "path": "functions/scheduled-task-worker",
+      "description": "Gains the catalog refresh task key and the reservation hold-expiry sweep."
+    },
+    {
+      "name": "infra",
+      "path": "infra",
+      "description": "Square secrets per stage, the notification-URL secret and its post-deploy assertion, catalog and expiry schedules, the Function URL auth switch to public, and a signature-failure alarm."
+    }
+  ],
+  "workstreams": [
+    {
+      "id": "WS-01",
+      "name": "Contracts: catalog, cart, and order types; SeatHolder; widened SquareClient",
+      "taskFile": "tasks/phase-2-square-ordering/WS-01-contracts-catalog-orders.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [],
+      "packages": [
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-02",
+      "name": "Database: orders, line items, catalog cache, capacity constraint",
+      "taskFile": "tasks/phase-2-square-ordering/WS-02-database-orders-capacity.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-01"
+      ],
+      "packages": [
+        "database",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-03",
+      "name": "square-client: production Square adapter and signature verification",
+      "taskFile": "tasks/phase-2-square-ordering/WS-03-square-client.md",
+      "status": "complete",
+      "size": "L",
+      "dependencies": [
+        "WS-01"
+      ],
+      "packages": [
+        "square-client",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-04",
+      "name": "catalog-core: catalog cache sync and read paths",
+      "taskFile": "tasks/phase-2-square-ordering/WS-04-catalog-core.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-02",
+        "WS-03"
+      ],
+      "packages": [
+        "catalog-core",
+        "database",
+        "contracts",
+        "scheduled-task-worker"
+      ]
+    },
+    {
+      "id": "WS-05",
+      "name": "commerce-core: order lifecycle, seat holding, and real startCheckout",
+      "taskFile": "tasks/phase-2-square-ordering/WS-05-order-lifecycle.md",
+      "status": "not_started",
+      "size": "L",
+      "dependencies": [
+        "WS-02",
+        "WS-03",
+        "WS-06"
+      ],
+      "packages": [
+        "commerce-core",
+        "database",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-06",
+      "name": "reservation-core: capacity enforcement, holds, and expiry",
+      "taskFile": "tasks/phase-2-square-ordering/WS-06-reservation-capacity.md",
+      "status": "not_started",
+      "size": "L",
+      "dependencies": [
+        "WS-02"
+      ],
+      "packages": [
+        "reservation-core",
+        "database",
+        "contracts",
+        "scheduled-task-worker"
+      ]
+    },
+    {
+      "id": "WS-07",
+      "name": "Server Action foundation and authenticated mutation wrapper",
+      "taskFile": "tasks/phase-2-square-ordering/WS-07-server-action-foundation.md",
+      "status": "not_started",
+      "size": "S",
+      "dependencies": [
+        "WS-01"
+      ],
+      "packages": [
+        "web",
+        "auth",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-08",
+      "name": "Ordering page: cafe menu and class listing",
+      "taskFile": "tasks/phase-2-square-ordering/WS-08-ordering-page.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": [
+        "WS-04",
+        "WS-07"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "catalog-core"
+      ]
+    },
+    {
+      "id": "WS-09",
+      "name": "Cart, participant selection, and review page",
+      "taskFile": "tasks/phase-2-square-ordering/WS-09-cart-participants.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": [
+        "WS-05",
+        "WS-06",
+        "WS-08"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "customer-core",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-10",
+      "name": "Webhook fulfillment: confirm orders and reservations on payment",
+      "taskFile": "tasks/phase-2-square-ordering/WS-10-webhook-fulfillment.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": [
+        "WS-03",
+        "WS-04",
+        "WS-05",
+        "WS-06"
+      ],
+      "packages": [
+        "square-webhook",
+        "commerce-core",
+        "reservation-core",
+        "square-client"
+      ]
+    },
+    {
+      "id": "WS-11",
+      "name": "Infrastructure: Square secrets, catalog schedule, public Function URL",
+      "taskFile": "tasks/phase-2-square-ordering/WS-11-infrastructure.md",
+      "status": "not_started",
+      "size": "S",
+      "dependencies": [
+        "WS-03",
+        "WS-04",
+        "WS-06",
+        "WS-10"
+      ],
+      "packages": [
+        "infra"
+      ]
+    },
+    {
+      "id": "WS-12",
+      "name": "Test coverage, end-to-end specs, and documentation",
+      "taskFile": "tasks/phase-2-square-ordering/WS-12-tests-and-docs.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": [
+        "WS-10",
+        "WS-11",
+        "WS-13"
+      ],
+      "packages": [
+        "web",
+        "commerce-core",
+        "reservation-core",
+        "catalog-core"
+      ]
+    },
+    {
+      "id": "WS-13",
+      "name": "Checkout action, Square composition root, and order status page",
+      "taskFile": "tasks/phase-2-square-ordering/WS-13-checkout-composition.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": [
+        "WS-05",
+        "WS-09"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "square-client",
+        "commerce-core"
+      ]
+    }
+  ],
+  "outOfScope": [
+    "Guest and kiosk ordering (signed-in customers only this program)",
+    "Embedded card entry via the Square Web Payments SDK",
+    "Room and open-play booking; rooms remain display-only",
+    "Adding or editing household members during checkout; the picker selects from existing members only",
+    "Play-pass purchase or draw-down at checkout",
+    "Refunds and cancellation flows in the customer UI",
+    "An admin UI for the menu; Square's dashboard is the menu admin",
+    "Real reconciliation-worker comparison logic",
+    "Waiver signing at the point of class purchase",
+    "Klaviyo order-confirmation flows; providers stay no-op",
+    "Inventory tracking or item-level stock",
+    "Order modification after payment"
+  ]
+}

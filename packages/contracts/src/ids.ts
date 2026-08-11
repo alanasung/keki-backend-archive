@@ -56,3 +56,12 @@ export const createNotificationOutboxEntryId = makeIdFactory<'NotificationOutbox
 export type StaffAuditLogEntryId = Brand<string, 'StaffAuditLogEntryId'>;
 export const createStaffAuditLogEntryId =
   makeIdFactory<'StaffAuditLogEntryId'>('StaffAuditLogEntryId');
+
+export type CatalogItemId = Brand<string, 'CatalogItemId'>;
+export const createCatalogItemId = makeIdFactory<'CatalogItemId'>('CatalogItemId');
+
+export type OrderId = Brand<string, 'OrderId'>;
+export const createOrderId = makeIdFactory<'OrderId'>('OrderId');
+
+export type OrderLineItemId = Brand<string, 'OrderLineItemId'>;
+export const createOrderLineItemId = makeIdFactory<'OrderLineItemId'>('OrderLineItemId');

@@ -1,5 +1,4 @@
 <!-- BEGIN UNIVERSAL — source: @wildorder/program-pipeline packaged default -->
-
 # Agent Directives: Universal
 
 These directives apply to every agent working in this repository, regardless
@@ -50,7 +49,6 @@ of provider or harness.
 8. PARALLELIZE INDEPENDENT WORK: When the harness supports sub-agents and the
    task spans many independent files, split the work rather than degrading a
    single context; keep tightly coupled changes together.
-
 <!-- END UNIVERSAL -->
 
 ---

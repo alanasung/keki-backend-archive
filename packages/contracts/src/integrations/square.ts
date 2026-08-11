@@ -1,21 +1,52 @@
 import { z } from 'zod';
-import type { ReservationId } from '../ids';
+import type { OrderId } from '../ids';
 import type { PaymentRecord } from '../entities';
 
+export interface SquareCatalogItem {
+  readonly squareCatalogObjectId: string;
+  readonly squareVariationId: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly priceCents: number;
+  readonly currency: string;
+}
+
+export interface SquareCheckoutLineItem {
+  readonly name: string;
+  readonly quantity: number;
+  readonly unitPriceCents: number;
+}
+
 export interface SquareClient {
+  listCatalogItems(input?: { cursor?: string }): Promise<{
+    items: readonly SquareCatalogItem[];
+    cursor: string | null;
+  }>;
+  // Takes an order id plus line items rather than a reservationId — a cafe
+  // order has no reservation. Returns squareOrderId, not providerPaymentId:
+  // no payment exists at checkout-creation time, Square creates it when the
+  // customer pays, and its id arrives on the webhook.
   createCheckout(input: {
-    reservationId: ReservationId;
-    amountCents: number;
+    orderId: OrderId;
+    lineItems: readonly SquareCheckoutLineItem[];
     currency: string;
     idempotencyKey: string;
-  }): Promise<{ checkoutUrl: string; providerPaymentId: string }>;
+    redirectUrl: string;
+  }): Promise<{ checkoutUrl: string; squareOrderId: string }>;
   getPayment(input: { providerPaymentId: string }): Promise<PaymentRecord | null>;
   refundPayment(input: {
     providerPaymentId: string;
     amountCents: number;
     idempotencyKey: string;
   }): Promise<{ refundId: string }>;
-  verifyWebhookSignature(input: { rawBody: string; signature: string }): Promise<boolean>;
+  // Square's HMAC covers the notification URL concatenated with the body;
+  // without notificationUrl, the same signed body replays against a
+  // different endpoint.
+  verifyWebhookSignature(input: {
+    rawBody: string;
+    signature: string;
+    notificationUrl: string;
+  }): Promise<boolean>;
 }
 
 // The Square webhook envelope crosses a trust boundary (inbound HTTP from

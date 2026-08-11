@@ -64,9 +64,18 @@ that.
 - `packages/database/src/schema/reservations.ts` (MODIFY) — capacity support
   column and index; replace the `TODO(phase-2)`
 - `packages/database/src/schema/index.ts` (MODIFY) — export the new tables
-- `packages/database/drizzle/0001_*.sql` (NEW) — generated migration
+- `packages/database/drizzle/0001_chief_gressill.sql` (NEW) — generated migration.
+  Name it exactly this. `drizzle-kit generate` assigns a random adjective-noun
+  tag, so the name cannot be predicted before generation — but the build
+  runner matches declared files **literally**, not as globs, and a wildcard
+  here reports the file missing no matter what was produced. If you regenerate
+  and get a different tag, rename the file to this one and update
+  `drizzle/meta/_journal.json` to match.
 - `packages/database/drizzle/0002_capacity_constraint.sql` (NEW) — hand-written
   constraint and trigger
+- `packages/database/drizzle/meta/_journal.json` (MODIFY) — register both
+  migrations
+- `packages/database/drizzle/meta/0001_snapshot.json` (NEW) — generated snapshot
 - `packages/database/src/schema/schema.test.ts` (MODIFY) — constraint coverage
 
 ## Existing Interfaces to Consume
@@ -282,10 +291,25 @@ export const paymentStatusEnum = pgEnum('payment_status', PAYMENT_STATUSES);
    Use a stable `SQLSTATE` rather than message matching so WS-06 can translate
    the error into a typed domain error without parsing English.
 
-6. **Generate the migration** for steps 1–4 with drizzle-kit, then add the
-   hand-written `0002` file. Apply both against a real Neon branch using the
-   **direct** connection string via `pnpm db:migrate`. A migration that has not
-   been applied against a real database is unverified.
+6. **Generate the migration** for steps 1–4 with `pnpm --filter @keki/database
+   db:generate`, then add the hand-written `0002` file and register both in
+   `drizzle/meta/_journal.json`.
+
+   `drizzle.config.ts` validates `DATABASE_URL_POOLED` / `DATABASE_URL_DIRECT`
+   at load, so generation needs those variables **set but not reachable** —
+   placeholder values are enough, because generation only diffs the schema
+   files and never connects.
+
+   **Do not try to apply the migration locally.** This repository verifies
+   migrations in CI: `.github/workflows/ci.yml` creates a per-run Neon branch,
+   exports both connection strings, and runs `pnpm db:migrate` before the test
+   suite. Production applies them through the tag-triggered deploy workflow.
+   There are no local Neon credentials and there should not be, so a local
+   apply is not a gate this workstream can or should pass.
+
+   Confirm instead that the generated migration matches the schema files: a
+   second `db:generate` must report no schema changes. That catches drift
+   without needing a database.
 
 7. **Export the new tables** from `src/schema/index.ts`, and confirm no existing
    import path changed.
@@ -334,8 +358,10 @@ without a database, and a mocked constraint proves nothing.
 ## Acceptance Criteria
 
 1. `packages/database` passes all four scripts.
-2. Migrations apply cleanly against a real Neon branch via the **direct**
-   connection string, and re-running `db:migrate` is a no-op.
+2. Both migrations exist and are registered in `drizzle/meta/_journal.json`, and
+   a second `db:generate` reports no schema changes — so the checked-in SQL
+   matches the schema files with no drift. Applying against Neon is CI's job
+   (per-run branch, then `pnpm db:migrate`) and is **not** a local gate.
 3. `orders`, `order_line_items`, and `catalog_items` exist with the columns,
    indexes, and checks above.
 4. `order_line_items` enforces the catalog-item XOR occurrence invariant in the

@@ -11,6 +11,9 @@ importers:
       '@aws-sdk/client-sqs':
         specifier: ^3.700.0
         version: 3.1105.0
+      '@keki/auth':
+        specifier: workspace:*
+        version: link:packages/auth
       '@keki/catalog-core':
         specifier: workspace:*
         version: link:packages/catalog-core

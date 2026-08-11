@@ -12,6 +12,9 @@
     "author": "claude-code/opus",
     "validator": "gpt-5.6-terra"
   },
+  "build": {
+    "critiqueTests": true
+  },
   "verify": {
     "workspace": "test -f pnpm-workspace.yaml && test -f package.json",
     "typecheck": "pnpm -r typecheck",

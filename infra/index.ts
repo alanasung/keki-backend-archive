@@ -1,8 +1,8 @@
-import { createAlarms } from "./alarms";
+import { createAlarms, createSignatureFailureAlarm } from "./alarms";
 import { createAuth } from "./auth";
-import { attachWorkers, createQueues } from "./queues";
-import { createSchedulerRole } from "./scheduler";
-import { createSecrets } from "./secrets";
+import { assertSquareNotificationUrlMatches, attachWorkers, createQueues } from "./queues";
+import { createSchedulerRole, createSchedules } from "./scheduler";
+import { createSecrets, type Secrets } from "./secrets";
 import { createDocumentsBucket } from "./storage";
 import { createWeb } from "./web";
 
@@ -24,6 +24,16 @@ function assertExpectedAccount(): void {
   });
 }
 
+// WS-11 step 3: the deploy-time counterpart to `assertSquareNotificationUrlMatches`
+// (queues.ts) — resolves the configured secret and the real Function URL,
+// then fails the deploy on any disagreement, including a trailing slash.
+function assertNotificationUrlConfigured(secrets: Secrets, squareWebhookUrl: Output<string>): void {
+  $resolve([secrets.SquareNotificationUrl.value, squareWebhookUrl]).apply(([configured, actual]) => {
+    assertSquareNotificationUrlMatches(configured, actual);
+    return actual;
+  });
+}
+
 export function createInfra(): {
   webUrl: Output<string>;
   bucketArn: Output<string>;
@@ -36,9 +46,12 @@ export function createInfra(): {
   const auth = createAuth(`keki-${$app.stage}`);
   const queueResources = createQueues();
 
-  createAlarms(queueResources);
-  createSchedulerRole(queueResources);
+  const { topic } = createAlarms(queueResources);
+  const schedulerRole = createSchedulerRole(queueResources);
+  createSchedules(queueResources, schedulerRole);
   const workers = attachWorkers(queueResources, secrets);
+  createSignatureFailureAlarm(workers.squareWebhookHttp, topic);
+  assertNotificationUrlConfigured(secrets, workers.squareWebhookHttp.url);
 
   const web = createWeb({ secrets, auth });
 

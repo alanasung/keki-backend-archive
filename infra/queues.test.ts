@@ -1,8 +1,17 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { ALARM_DEFINITIONS } from "./alarms";
 import {
+  ALARM_DEFINITIONS,
+  SIGNATURE_FAILURE_ALARM_NAME,
+  SIGNATURE_FAILURE_ALARM_PERIOD_SECONDS,
+  SIGNATURE_FAILURE_ALARM_THRESHOLD,
+  SIGNATURE_FAILURE_LOG_PATTERN,
+  SIGNATURE_FAILURE_METRIC_NAME,
+  SIGNATURE_FAILURE_METRIC_NAMESPACE,
+} from "./alarms";
+import {
+  assertSquareNotificationUrlMatches,
   attachWorkers,
   QUEUE_DEFINITIONS,
   QUEUE_SUBSCRIBER_DEFINITIONS,
@@ -71,7 +80,18 @@ describe("QUEUE_SUBSCRIBER_DEFINITIONS (WS-11 deliverable)", () => {
       expect(definition.extraSecretNames.includes("SquareWebhookSignatureKey")).toBe(expectsSquareSecret);
     }
     expect(SQUARE_WEBHOOK_HTTP_DEFINITION.extraSecretNames).toContain("SquareWebhookSignatureKey");
-    expect(SQUARE_WEBHOOK_HTTP_DEFINITION.authType).toBe("AWS_IAM");
+  });
+
+  // WS-11 test 5 (SC-11's infrastructure half): the Function URL is public;
+  // its only protection is Square's signature verification.
+  it("opens the Function URL with no authorization", () => {
+    expect(SQUARE_WEBHOOK_HTTP_DEFINITION.authType).toBe("none");
+  });
+
+  it("receives the Square access token, environment, and notification URL", () => {
+    expect(SQUARE_WEBHOOK_HTTP_DEFINITION.extraSecretNames).toContain("SquareAccessToken");
+    expect(SQUARE_WEBHOOK_HTTP_DEFINITION.extraSecretNames).toContain("SquareEnvironment");
+    expect(SQUARE_WEBHOOK_HTTP_DEFINITION.extraSecretNames).toContain("SquareNotificationUrl");
   });
 
   it("sets KEKI_ALLOW_NOOP_PROVIDERS only on the notification worker", () => {
@@ -142,7 +162,11 @@ describe("attachWorkers (WS-11 deliverable)", () => {
     NeonPooledUrl: fakeSecret("NeonPooledUrl"),
     NeonDirectUrl: fakeSecret("NeonDirectUrl"),
     SquareAccessToken: fakeSecret("SquareAccessToken"),
+    SquareEnvironment: fakeSecret("SquareEnvironment"),
     SquareWebhookSignatureKey: fakeSecret("SquareWebhookSignatureKey"),
+    SquareNotificationUrl: fakeSecret("SquareNotificationUrl"),
+    CartCookieSecret: fakeSecret("CartCookieSecret"),
+    AppBaseUrl: fakeSecret("AppBaseUrl"),
     KlaviyoApiKey: fakeSecret("KlaviyoApiKey"),
     WaiverProviderApiKey: fakeSecret("WaiverProviderApiKey"),
     KioskDeviceToken: fakeSecret("KioskDeviceToken"),
@@ -170,7 +194,39 @@ describe("attachWorkers (WS-11 deliverable)", () => {
     expect(args.environment["DATABASE_URL_POOLED"]).toBe(fakeSecrets.NeonPooledUrl.value);
     expect(args.environment["DATABASE_URL_DIRECT"]).toBe(fakeSecrets.NeonDirectUrl.value);
     expect(args.environment["SQUARE_WEBHOOK_SIGNATURE_KEY"]).toBe(fakeSecrets.SquareWebhookSignatureKey.value);
-    expect(args.url.authorization).toBe("iam");
+  });
+
+  // WS-11 test 5 (SC-11's infrastructure half).
+  it("opens the square-webhook Function URL with no authorization", () => {
+    const { resources } = buildResources();
+    const workers = attachWorkers(resources, fakeSecrets);
+    const fn = workers.squareWebhookHttp as unknown as FakeSstFunction;
+    const args = fn.args as { url: { authorization: string } };
+
+    expect(args.url.authorization).toBe("none");
+  });
+
+  // WS-11 test 3: the webhook function receives all three Square variables.
+  it("links the square-webhook HTTP ingress to its Square configuration", () => {
+    const { resources } = buildResources();
+    const workers = attachWorkers(resources, fakeSecrets);
+    const fn = workers.squareWebhookHttp as unknown as FakeSstFunction;
+    const args = fn.args as { environment: Record<string, unknown> };
+
+    expect(args.environment["SQUARE_ACCESS_TOKEN"]).toBe(fakeSecrets.SquareAccessToken.value);
+    expect(args.environment["SQUARE_ENVIRONMENT"]).toBe(fakeSecrets.SquareEnvironment.value);
+    expect(args.environment["SQUARE_NOTIFICATION_URL"]).toBe(fakeSecrets.SquareNotificationUrl.value);
+  });
+
+  // WS-11 test 4: no self-reference to the function's own URL output.
+  it("sources SQUARE_NOTIFICATION_URL from the secret, not the function's own url", () => {
+    const { resources } = buildResources();
+    const workers = attachWorkers(resources, fakeSecrets);
+    const fn = workers.squareWebhookHttp as unknown as FakeSstFunction;
+    const args = fn.args as { environment: Record<string, unknown> };
+
+    expect(args.environment["SQUARE_NOTIFICATION_URL"]).not.toBe(fn.url);
+    expect(args.environment["SQUARE_NOTIFICATION_URL"]).toBe(fakeSecrets.SquareNotificationUrl.value);
   });
 
   it("maps the signature key onto the SquareWebhookQueue subscriber only", () => {
@@ -225,6 +281,61 @@ describe("attachWorkers (WS-11 deliverable)", () => {
       { environment: Record<string, unknown> },
     ];
     expect(subscriber.environment["NOTIFICATION_QUEUE_URL"]).toBe(queues["NotificationQueue"]!.url);
+  });
+});
+
+describe("the Phase 1 IAM-exception comment was replaced (WS-11 test 6)", () => {
+  it("no longer claims the URL must never accept unauthenticated requests", () => {
+    const source = readFileSync(new URL("./queues.ts", import.meta.url), "utf8");
+    expect(source).not.toContain("must never accept unauthenticated requests");
+  });
+
+  it("documents the new invariant: signature verification is the sole protection", () => {
+    const source = readFileSync(new URL("./queues.ts", import.meta.url), "utf8");
+    expect(source).toMatch(/public/i);
+    expect(source).toContain("Square's real signature verification in `@keki/square-client`");
+  });
+});
+
+describe("assertSquareNotificationUrlMatches (WS-11 tests 4a, 4b)", () => {
+  const FUNCTION_URL = "https://abc123.lambda-url.us-west-2.on.aws/";
+
+  it("does not throw when the secret and the Function URL agree", () => {
+    expect(() => assertSquareNotificationUrlMatches(FUNCTION_URL, FUNCTION_URL)).not.toThrow();
+  });
+
+  it("throws on any mismatch (test 4a)", () => {
+    expect(() => assertSquareNotificationUrlMatches("https://configured.example.com/", FUNCTION_URL)).toThrow(
+      /does not match/,
+    );
+  });
+
+  it("catches a trailing-slash-only mismatch (test 4b)", () => {
+    const withoutSlash = FUNCTION_URL.slice(0, -1);
+    expect(() => assertSquareNotificationUrlMatches(withoutSlash, FUNCTION_URL)).toThrow(/does not match/);
+    expect(() => assertSquareNotificationUrlMatches(FUNCTION_URL, withoutSlash)).toThrow(/does not match/);
+  });
+});
+
+describe("signature-failure alarm (WS-11 test 14)", () => {
+  it("emits a metric filter matching the log line httpHandler writes on a rejected request", () => {
+    const httpSource = readFileSync(
+      new URL("../functions/square-webhook/src/http.ts", import.meta.url),
+      "utf8",
+    );
+    // SIGNATURE_FAILURE_LOG_PATTERN is a quoted CloudWatch Logs filter
+    // phrase; strip the quotes to check it appears verbatim in the log call
+    // it's meant to match.
+    const phrase = SIGNATURE_FAILURE_LOG_PATTERN.replaceAll('"', "");
+    expect(httpSource).toContain(phrase);
+  });
+
+  it("alarms above a threshold over a 5-minute period", () => {
+    expect(SIGNATURE_FAILURE_ALARM_NAME).toBeTruthy();
+    expect(SIGNATURE_FAILURE_ALARM_THRESHOLD).toBeGreaterThan(0);
+    expect(SIGNATURE_FAILURE_ALARM_PERIOD_SECONDS).toBe(5 * 60);
+    expect(SIGNATURE_FAILURE_METRIC_NAME).toBeTruthy();
+    expect(SIGNATURE_FAILURE_METRIC_NAMESPACE).toBeTruthy();
   });
 });
 

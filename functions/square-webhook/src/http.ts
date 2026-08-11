@@ -78,6 +78,11 @@ export async function httpHandler(event: LambdaFunctionURLEvent): Promise<{ stat
       notificationUrl: getNotificationUrl(),
     })
   ) {
+    // Matches infra/alarms.ts's SIGNATURE_FAILURE_LOG_PATTERN — the Function
+    // URL is public (WS-11/SC-11), so a burst of these is either an attack
+    // or a misconfigured SquareNotificationUrl, and a rejected request never
+    // reaches a queue or DLQ where it would otherwise be visible.
+    console.warn('square-webhook http: signature verification failed');
     return { statusCode: 401 };
   }
 

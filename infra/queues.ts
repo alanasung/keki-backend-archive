@@ -149,8 +149,14 @@ export interface HttpFunctionDefinition {
   readonly functionName: string;
   readonly handler: string;
   readonly timeoutSeconds: number;
-  /** Lambda Function URL AuthType — never NONE while verification isn't Square-compatible (see verify-signature.ts). */
-  readonly authType: "AWS_IAM";
+  /**
+   * Lambda Function URL AuthType. Public (`"none"`) since WS-11 (SC-11) —
+   * the endpoint's only protection is Square's signature verification in
+   * `@keki/square-client`, exercised by WS-03 tests 1–8 and WS-10 tests
+   * 1–4. Phase 1's verifier here was not Square-compatible, which is why
+   * the URL stayed `"iam"`-authed until that verifier replaced it.
+   */
+  readonly authType: "none";
   readonly extraSecretNames: readonly SecretName[];
   readonly extraEnvVarNames: readonly string[];
 }
@@ -159,8 +165,8 @@ export const SQUARE_WEBHOOK_HTTP_DEFINITION: HttpFunctionDefinition = {
   functionName: "SquareWebhookHttp",
   handler: "functions/square-webhook/src/http.httpHandler",
   timeoutSeconds: 10,
-  authType: "AWS_IAM",
-  extraSecretNames: ["SquareWebhookSignatureKey"],
+  authType: "none",
+  extraSecretNames: ["SquareWebhookSignatureKey", "SquareAccessToken", "SquareEnvironment", "SquareNotificationUrl"],
   extraEnvVarNames: ["SQUARE_WEBHOOK_QUEUE_URL"],
 };
 
@@ -168,9 +174,6 @@ export interface WorkerResources {
   readonly squareWebhookHttp: sst.aws.Function;
 }
 
-// The one deliberate SC-11 exception (see functions/square-webhook/src/verify-signature.ts):
-// Phase 1's signature verification is not Square-compatible, so the Function
-// URL created here must never accept unauthenticated requests.
 export function attachWorkers(resources: QueueResources, secrets: Secrets): WorkerResources {
   for (const definition of QUEUE_SUBSCRIBER_DEFINITIONS) {
     const queue = resources.queues[definition.queueName];
@@ -220,18 +223,61 @@ export function attachWorkers(resources: QueueResources, secrets: Secrets): Work
     throw new Error('attachWorkers: "SquareWebhookQueue" is required for the square-webhook HTTP ingress.');
   }
 
+  // WS-11 (SC-11): this Function URL is public. Its sole protection is
+  // Square's real signature verification in `@keki/square-client`
+  // (`verifySquareSignature`), exercised by WS-03 tests 1–8 and wired into
+  // `httpHandler` by WS-10 (tests 1–4). Phase 1's generic HMAC verifier was
+  // not Square-compatible, which is why this URL stayed `"iam"`-authed
+  // (unreachable from the public internet) until that verifier replaced it —
+  // do not widen this again without an equally-real verifier in front of it.
   const squareWebhookHttp = new sst.aws.Function(SQUARE_WEBHOOK_HTTP_DEFINITION.functionName, {
     handler: SQUARE_WEBHOOK_HTTP_DEFINITION.handler,
     timeout: `${SQUARE_WEBHOOK_HTTP_DEFINITION.timeoutSeconds} seconds`,
-    link: [secrets.NeonPooledUrl, secrets.NeonDirectUrl, secrets.SquareWebhookSignatureKey, squareWebhookQueue],
+    link: [
+      secrets.NeonPooledUrl,
+      secrets.NeonDirectUrl,
+      secrets.SquareWebhookSignatureKey,
+      secrets.SquareAccessToken,
+      secrets.SquareEnvironment,
+      secrets.SquareNotificationUrl,
+      squareWebhookQueue,
+    ],
     environment: {
       DATABASE_URL_POOLED: secrets.NeonPooledUrl.value,
       DATABASE_URL_DIRECT: secrets.NeonDirectUrl.value,
       SQUARE_WEBHOOK_SIGNATURE_KEY: secrets.SquareWebhookSignatureKey.value,
       SQUARE_WEBHOOK_QUEUE_URL: squareWebhookQueue.url,
+      SQUARE_ACCESS_TOKEN: secrets.SquareAccessToken.value,
+      SQUARE_ENVIRONMENT: secrets.SquareEnvironment.value,
+      // Sourced from the configured secret, never from `squareWebhookHttp.url`
+      // itself — the Function URL is an output *of* this function, so its own
+      // environment cannot depend on it without a cycle. See
+      // `assertSquareNotificationUrlMatches` below for what keeps this
+      // correct across redeploys.
+      SQUARE_NOTIFICATION_URL: secrets.SquareNotificationUrl.value,
     },
-    url: { authorization: "iam" },
+    url: { authorization: SQUARE_WEBHOOK_HTTP_DEFINITION.authType },
   });
 
   return { squareWebhookHttp };
+}
+
+// WS-11 step 3: the configured `SquareNotificationUrl` secret and the real,
+// deployed Function URL must agree character for character — a trailing-
+// slash difference produces a verifier that rejects every genuine delivery,
+// indistinguishable from an attack. A redeployed stage that mints a new
+// Function URL would otherwise silently break every webhook, with the only
+// symptom being the signature-failure alarm (`alarms.ts`) looking like an
+// attack. Kept as a plain function (rather than inline in the `.apply()` in
+// `infra/index.ts`) so it can be asserted on directly, without a live Pulumi
+// Output.
+export function assertSquareNotificationUrlMatches(configuredNotificationUrl: string, actualFunctionUrl: string): void {
+  if (configuredNotificationUrl !== actualFunctionUrl) {
+    throw new Error(
+      `Refusing to deploy: the SquareNotificationUrl secret ("${configuredNotificationUrl}") does not match ` +
+        `the deployed square-webhook Function URL ("${actualFunctionUrl}"). Set the secret to the Function URL, ` +
+        "character for character (a trailing slash counts), and redeploy: " +
+        "`pnpm sst secret set SquareNotificationUrl <url> --stage <stage>`.",
+    );
+  }
 }

@@ -13,18 +13,35 @@ function readInfraSource(filename: string): string {
 }
 
 describe("SECRET_NAMES", () => {
-  it("declares exactly the seven required secrets", () => {
+  it("declares exactly the eleven required secrets", () => {
     expect([...SECRET_NAMES].sort()).toEqual(
       [
         "NeonPooledUrl",
         "NeonDirectUrl",
         "SquareAccessToken",
+        "SquareEnvironment",
         "SquareWebhookSignatureKey",
+        "SquareNotificationUrl",
+        "CartCookieSecret",
+        "AppBaseUrl",
         "KlaviyoApiKey",
         "WaiverProviderApiKey",
         "KioskDeviceToken",
       ].sort(),
     );
+  });
+
+  // WS-11 test 1: the four secrets this workstream adds.
+  it("includes the four WS-11 secrets", () => {
+    for (const name of ["SquareEnvironment", "SquareNotificationUrl", "CartCookieSecret", "AppBaseUrl"]) {
+      expect(SECRET_NAMES).toContain(name);
+    }
+  });
+
+  // WS-11 test 2: the declared-once rule — no secret is redeclared under a
+  // second name.
+  it("declares no name twice", () => {
+    expect(new Set(SECRET_NAMES).size).toBe(SECRET_NAMES.length);
   });
 });
 
@@ -50,7 +67,7 @@ describe("infra/web.ts environment mapping", () => {
     expect(WEB_ENV_MAPPING.DATABASE_URL_POOLED).not.toBe(WEB_ENV_MAPPING.DATABASE_URL_DIRECT);
   });
 
-  it("links exactly the five application variables, and none of the function-scoped ones", () => {
+  it("links exactly the seven application variables, and none of the function-scoped ones", () => {
     expect(Object.keys(WEB_ENV_MAPPING).sort()).toEqual(
       [
         "DATABASE_URL_POOLED",
@@ -58,11 +75,33 @@ describe("infra/web.ts environment mapping", () => {
         "COGNITO_USER_POOL_ID",
         "COGNITO_CLIENT_ID",
         "KIOSK_DEVICE_TOKEN",
+        "CART_COOKIE_SECRET",
+        "APP_BASE_URL",
       ].sort(),
     );
     expect(Object.keys(WEB_ENV_MAPPING)).not.toContain("SQUARE_WEBHOOK_SIGNATURE_KEY");
+    expect(Object.keys(WEB_ENV_MAPPING)).not.toContain("SQUARE_ACCESS_TOKEN");
     expect(Object.keys(WEB_ENV_MAPPING)).not.toContain("KEKI_ALLOW_NOOP_PROVIDERS");
     // Reserved Lambda key — CreateFunction rejects it; Lambda injects it.
+    expect(Object.keys(WEB_ENV_MAPPING)).not.toContain("AWS_REGION");
+  });
+
+  // WS-11 test 7: the web function receives cart and base-URL configuration.
+  it("maps CART_COOKIE_SECRET and APP_BASE_URL to their secrets", () => {
+    expect(WEB_ENV_MAPPING.CART_COOKIE_SECRET).toBe("CartCookieSecret");
+    expect(WEB_ENV_MAPPING.APP_BASE_URL).toBe("AppBaseUrl");
+  });
+
+  // WS-11 test 8: no secret is exposed as NEXT_PUBLIC_.
+  it("exposes no mapped key as NEXT_PUBLIC_", () => {
+    for (const key of Object.keys(WEB_ENV_MAPPING)) {
+      expect(key.startsWith("NEXT_PUBLIC_")).toBe(false);
+    }
+  });
+
+  // WS-11 test 9: AWS_REGION remains unset — Phase 1's reserved-key fix
+  // stays intact.
+  it("still does not set AWS_REGION", () => {
     expect(Object.keys(WEB_ENV_MAPPING)).not.toContain("AWS_REGION");
   });
 });

@@ -22,12 +22,17 @@ producing an `undefined` that surfaces later as a confusing error.
 | `COGNITO_CLIENT_ID` | Yes | `packages/auth/src/env.ts` | AWS Cognito console (the App Client `apps/web` authenticates against), or SST output. |
 | `AWS_REGION` | Yes | `packages/auth/src/env.ts` | The AWS region the Cognito User Pool lives in (`sst.config.ts` uses `us-west-2`). |
 | `KIOSK_DEVICE_TOKEN` | No — kiosk routes redirect to sign-in without it, the app still boots | `apps/web/app/auth/guards.ts` (`requireKioskDevice`) | Any string locally; a deployed stage gets it from the `KioskDeviceToken` SST secret. |
+| `CART_COOKIE_SECRET` | Yes | `apps/web/app/(customer)/cart/cart-cookie.ts` | Any string locally; a deployed stage gets it from the `CartCookieSecret` SST secret. |
+| `APP_BASE_URL` | Yes, for WS-13's Square redirect URL | Server configuration, never a request header (WS-13) | A deployed stage gets it from the `AppBaseUrl` SST secret, set to that stage's public URL. |
 
 ### Linked into individual functions (`functions/*`), not the web app
 
 | Variable | Required | Consumed by | How to obtain |
 | --- | --- | --- | --- |
 | `SQUARE_WEBHOOK_SIGNATURE_KEY` | Yes, for `functions/square-webhook` | `functions/square-webhook/src/http.ts` | Square Developer Dashboard → your application → Webhooks → Signature Key. A deployed stage gets it from the `SquareWebhookSignatureKey` SST secret. |
+| `SQUARE_ACCESS_TOKEN` | Yes, for `functions/square-webhook` and `functions/scheduled-task-worker` | `packages/square-client/src/env.ts` | Square Developer Dashboard → your application → Credentials. A deployed stage gets it from the `SquareAccessToken` SST secret. |
+| `SQUARE_ENVIRONMENT` | Yes, for `functions/square-webhook` and `functions/scheduled-task-worker` | `packages/square-client/src/env.ts` | `"sandbox"` or `"production"`. A deployed stage gets it from the `SquareEnvironment` SST secret; refuses `"sandbox"` when `NODE_ENV=production`. |
+| `SQUARE_NOTIFICATION_URL` | Yes, for `functions/square-webhook` | `functions/square-webhook/src/http.ts` | The deployed `square-webhook` Function URL, registered in Square's dashboard. Configured (not derived) via the `SquareNotificationUrl` SST secret — `infra/index.ts` fails the deploy if it disagrees with the real Function URL, including by a trailing slash. |
 | `KEKI_ALLOW_NOOP_PROVIDERS` | No | `packages/notification-core/src/providers.ts`, consumed by `functions/notification-worker` | Not a credential — a feature flag. `infra/queues.ts` sets it to `"true"` automatically on every non-production stage; refused outside that. |
 
 ### Test-only overrides (rejected in production)
@@ -69,7 +74,7 @@ connection strings you assigned to which variable.
 
 ## Provisioning the SST secrets
 
-`infra/secrets.ts` declares seven `sst.Secret`s. Every one of them must be
+`infra/secrets.ts` declares eleven `sst.Secret`s. Every one of them must be
 set per stage before `sst dev` or `sst deploy` can link it — an unset secret
 fails the run, not silently falls back to a default. Set each with:
 
@@ -77,23 +82,37 @@ fails the run, not silently falls back to a default. Set each with:
 pnpm sst secret set <Name> <value> --stage <stage>
 ```
 
-The seven secrets:
+The eleven secrets:
 
 | Secret | Set with |
 | --- | --- |
 | `NeonPooledUrl` | `pnpm sst secret set NeonPooledUrl "postgresql://...-pooler.../keki?sslmode=require" --stage <stage>` |
 | `NeonDirectUrl` | `pnpm sst secret set NeonDirectUrl "postgresql://.../keki?sslmode=require" --stage <stage>` |
 | `SquareAccessToken` | `pnpm sst secret set SquareAccessToken "<square-access-token>" --stage <stage>` |
+| `SquareEnvironment` | `pnpm sst secret set SquareEnvironment "sandbox" --stage <stage>` (or `"production"`) |
 | `SquareWebhookSignatureKey` | `pnpm sst secret set SquareWebhookSignatureKey "<square-webhook-signature-key>" --stage <stage>` |
+| `SquareNotificationUrl` | `pnpm sst secret set SquareNotificationUrl "<square-webhook Function URL>" --stage <stage>` — set **after** the first deploy of a stage, from that deploy's `squareWebhookUrl` output, character for character. |
+| `CartCookieSecret` | `pnpm sst secret set CartCookieSecret "<any-random-string>" --stage <stage>` |
+| `AppBaseUrl` | `pnpm sst secret set AppBaseUrl "https://<stage-public-url>" --stage <stage>` |
 | `KlaviyoApiKey` | `pnpm sst secret set KlaviyoApiKey "<klaviyo-api-key>" --stage <stage>` |
 | `WaiverProviderApiKey` | `pnpm sst secret set WaiverProviderApiKey "<waiver-provider-api-key>" --stage <stage>` |
 | `KioskDeviceToken` | `pnpm sst secret set KioskDeviceToken "<any-random-string>" --stage <stage>` |
 
-Only `NeonPooledUrl`, `NeonDirectUrl`, and `KioskDeviceToken` are linked into
-the web app today (`infra/web.ts`'s `WEB_ENV_MAPPING`); `SquareWebhookSignatureKey`
-is linked into `functions/square-webhook` (`infra/queues.ts`). The remaining
-secrets are declared for the Phase 2 integrations described in
-[`docs/vision.md`](vision.md) and are not yet consumed by any package.
+`NeonPooledUrl`, `NeonDirectUrl`, `KioskDeviceToken`, `CartCookieSecret`, and
+`AppBaseUrl` are linked into the web app (`infra/web.ts`'s `WEB_ENV_MAPPING`);
+`SquareWebhookSignatureKey`, `SquareAccessToken`, `SquareEnvironment`, and
+`SquareNotificationUrl` are linked into `functions/square-webhook`
+(`infra/queues.ts`). `KlaviyoApiKey` and `WaiverProviderApiKey` are declared
+for the Phase 2 integrations described in [`docs/vision.md`](vision.md) and
+are not yet consumed by any package.
+
+`SquareNotificationUrl` is configured, not derived: `infra/queues.ts` cannot
+read the webhook Function URL back into that same function's own
+environment (the URL is an output *of* the function). `infra/index.ts`
+asserts agreement between the secret and the real Function URL on every
+deploy and fails the deploy on any mismatch, including a trailing-slash
+difference — a mismatch there rejects every genuine Square delivery and is
+indistinguishable from an attack.
 
 ## Stage conventions
 

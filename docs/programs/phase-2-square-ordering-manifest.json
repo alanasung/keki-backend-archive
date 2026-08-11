@@ -330,7 +330,7 @@
       "id": "WS-11",
       "name": "Infrastructure: Square secrets, catalog schedule, public Function URL",
       "taskFile": "tasks/phase-2-square-ordering/WS-11-infrastructure.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "S",
       "dependencies": [
         "WS-03",

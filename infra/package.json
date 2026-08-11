@@ -8,6 +8,9 @@
     "test": "vitest run",
     "build": "tsc --noEmit -p tsconfig.json"
   },
+  "dependencies": {
+    "@keki/contracts": "workspace:*"
+  },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
     "@types/node": "^22.19.21",

@@ -13,7 +13,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['app/**/*.test.ts', 'middleware.test.ts'],
+    include: ['app/**/*.test.ts', 'app/**/*.test.tsx', 'middleware.test.ts'],
     // Importing `@keki/auth`'s package root (as `guards.ts` and
     // `require-session.ts` do) transitively evaluates `@keki/database`,
     // which resolves and validates its Neon connection strings at
@@ -28,6 +28,10 @@ export default defineConfig({
       AWS_REGION: 'us-east-1',
       DATABASE_URL_POOLED: 'postgres://user:pass@ep-test-123-pooler.us-east-2.aws.neon.tech/db?sslmode=require',
       DATABASE_URL_DIRECT: 'postgres://user:pass@ep-test-123.us-east-2.aws.neon.tech/db?sslmode=require',
+      // WS-09's cart cookie HMAC key. A test-only placeholder, mirroring the
+      // Cognito/Neon placeholders above — no test signs a cookie meant to be
+      // verified against a real deployment's secret.
+      CART_COOKIE_SECRET: 'test-cart-cookie-secret-do-not-use-in-production',
     },
   },
 });

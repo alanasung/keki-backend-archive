@@ -1,6 +1,6 @@
 import { ID_TOKEN_COOKIE_NAME } from '@keki/auth/cookies';
 import { signIdToken, startJwksServer } from './fixtures/jwks-server';
-import { seedTestUsers, TEST_USERS } from './fixtures/seed';
+import { seedOrderingFixtures, seedTestUsers, TEST_USERS } from './fixtures/seed';
 import { BASE_URL, COGNITO_CLIENT_ID } from './fixtures/test-env';
 
 /**
@@ -16,6 +16,11 @@ import { BASE_URL, COGNITO_CLIENT_ID } from './fixtures/test-env';
 export default async function globalSetup(): Promise<void> {
   await startJwksServer();
   await seedTestUsers();
+  // Must run after seedTestUsers: it seeds a child under TEST_USERS.CUSTOMER's
+  // household (see fixtures/seed.ts) — the browse -> cart -> checkout journey
+  // (WS-12 SC-15) needs a cafe item, a bookable class occurrence, and that
+  // child to exist before ordering.spec.ts runs.
+  await seedOrderingFixtures();
   await assertServerConfiguredForTests();
 }
 

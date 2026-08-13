@@ -69,7 +69,15 @@ declare namespace sst {
     }
 
     interface FunctionUrlArgs {
-      /** Maps to the Lambda Function URL `AuthType` — `"iam"` is `AWS_IAM`, never `"none"` (`NONE`) for an unverified ingress. */
+      /**
+       * Maps to the Lambda Function URL `AuthType` — `"iam"` is `AWS_IAM`,
+       * `"none"` is `NONE`. WS-11 (SC-11) opens `square-webhook`'s URL with
+       * `"none"` now that `@keki/square-client`'s real Square-compatible
+       * verifier (WS-03) is wired into the HTTP entry point (WS-10) — see
+       * the invariant comment on `SQUARE_WEBHOOK_HTTP_DEFINITION` in
+       * `queues.ts`. Do not default a new public Function URL to `"none"`
+       * without an equivalent verifier in front of it.
+       */
       authorization?: "iam" | "none";
     }
 
@@ -85,6 +93,8 @@ declare namespace sst {
       constructor(name: string, args: FunctionArgs);
       readonly url: Output<string>;
       readonly arn: Output<string>;
+      /** The physical Lambda function name — e.g. to derive its CloudWatch Log Group (`/aws/lambda/<name>`). */
+      readonly name: Output<string>;
     }
 
     interface BucketLifecycleRule {
@@ -152,9 +162,38 @@ declare namespace sst {
   }
 }
 
+// The narrow subset of SST's global `$` helpers (`.sst/platform/src/global.d.ts`)
+// this package actually calls — see the file-level comment above.
+declare function $resolve<T1, T2>(values: [Input<T1>, Input<T2>]): Output<[T1, T2]>;
+
 declare namespace aws {
   function getCallerIdentityOutput(args?: Record<string, never>): Output<{ accountId: string }>;
   function getRegionOutput(args?: Record<string, never>): Output<{ name: string }>;
+
+  namespace scheduler {
+    interface ScheduleFlexibleTimeWindow {
+      mode: "OFF";
+    }
+
+    interface ScheduleTarget {
+      arn: Input<string>;
+      roleArn: Input<string>;
+      input?: Input<string>;
+    }
+
+    class Schedule {
+      constructor(
+        name: string,
+        args: {
+          scheduleExpression: Input<string>;
+          flexibleTimeWindow: ScheduleFlexibleTimeWindow;
+          target: ScheduleTarget;
+        },
+      );
+      readonly arn: Output<string>;
+      readonly name: Output<string>;
+    }
+  }
 
   namespace cognito {
     class UserPoolDomain {
@@ -189,6 +228,22 @@ declare namespace aws {
           comparisonOperator: string;
           treatMissingData: string;
           alarmActions: Input<string>[];
+        },
+      );
+    }
+
+    class LogMetricFilter {
+      constructor(
+        name: string,
+        args: {
+          logGroupName: Input<string>;
+          pattern: string;
+          metricTransformation: {
+            name: string;
+            namespace: string;
+            value: string;
+            defaultValue?: number;
+          };
         },
       );
     }

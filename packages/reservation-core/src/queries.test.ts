@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createOccurrenceId, createReservationId } from '@keki/contracts';
+import { createChildId, createCustomerId, createOccurrenceId, createReservationId } from '@keki/contracts';
 
 // vi.mock factories are hoisted above all other top-level code, so mock state
 // must be created via vi.hoisted() — see packages/auth/src/profile.test.ts
@@ -49,6 +49,7 @@ vi.mock('drizzle-orm', () => ({
 import {
   countConfirmedParticipants,
   getReservationById,
+  listParticipantsForReservation,
   listReservationsForOccurrence,
 } from './queries';
 
@@ -99,6 +100,32 @@ describe('listReservationsForOccurrence', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0]?.id).toBe(RESERVATION_ROW.id);
+  });
+});
+
+describe('listParticipantsForReservation', () => {
+  it('returns an empty array, not null, when nothing matches', async () => {
+    mockRows.mockReturnValue([]);
+
+    const result = await listParticipantsForReservation(createReservationId(RESERVATION_ROW.id));
+
+    expect(result).toEqual([]);
+  });
+
+  it('maps a customer row and a child row to their respective refs', async () => {
+    const customerId = '77777777-7777-4777-8777-777777777777';
+    const childId = '88888888-8888-4888-8888-888888888888';
+    mockRows.mockReturnValue([
+      { customerId, childId: null },
+      { customerId: null, childId },
+    ]);
+
+    const result = await listParticipantsForReservation(createReservationId(RESERVATION_ROW.id));
+
+    expect(result).toEqual([
+      { kind: 'CUSTOMER', customerId: createCustomerId(customerId) },
+      { kind: 'CHILD', childId: createChildId(childId) },
+    ]);
   });
 });
 

@@ -3,6 +3,7 @@ import type { NavItem, Surface } from '@keki/ui';
 export const navConfig: Readonly<Record<Surface, readonly NavItem[]>> = {
   customer: [
     { label: 'Book', href: '/book' },
+    { label: 'Cart', href: '/cart' },
     { label: 'Account', href: '/account' },
   ],
   kiosk: [

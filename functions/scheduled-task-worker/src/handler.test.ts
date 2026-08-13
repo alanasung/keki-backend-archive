@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
 import { isKnownTaskKey, KNOWN_TASK_KEYS, type KnownTaskKey } from '@keki/contracts';
 
-const { sendMock, syncCatalogMock, createSquareClientMock } = vi.hoisted(() => ({
+const { sendMock, syncCatalogMock, createSquareClientMock, expireStaleHoldsMock } = vi.hoisted(() => ({
   sendMock: vi.fn().mockResolvedValue({}),
   syncCatalogMock: vi.fn().mockResolvedValue({ upserted: 0, archived: 0, pages: 0 }),
   createSquareClientMock: vi.fn().mockReturnValue({}),
+  expireStaleHoldsMock: vi.fn().mockResolvedValue(0),
 }));
 
 vi.mock('@aws-sdk/client-sqs', () => ({
@@ -15,6 +16,7 @@ vi.mock('@aws-sdk/client-sqs', () => ({
 
 vi.mock('@keki/catalog-core', () => ({ syncCatalog: syncCatalogMock }));
 vi.mock('@keki/square-client', () => ({ createSquareClient: createSquareClientMock }));
+vi.mock('@keki/reservation-core', () => ({ expireStaleHolds: expireStaleHoldsMock }));
 
 import { handler } from './handler';
 
@@ -54,6 +56,7 @@ beforeEach(() => {
   sendMock.mockClear();
   syncCatalogMock.mockClear();
   createSquareClientMock.mockClear();
+  expireStaleHoldsMock.mockClear();
   process.env['NOTIFICATION_QUEUE_URL'] = 'https://sqs.example.com/queue/NotificationQueue';
 });
 
@@ -102,11 +105,24 @@ describe('handler', () => {
     expect(createSquareClientMock).toHaveBeenCalledTimes(1);
     expect(syncCatalogMock).toHaveBeenCalledTimes(1);
   });
+
+  it('dispatches reservation.expire-holds: calls expireStaleHolds', async () => {
+    const result = await handler(sqsEvent([makeRecord('m1', scheduledTaskEnvelope('reservation.expire-holds'))]));
+
+    expect(result.batchItemFailures).toEqual([]);
+    expect(expireStaleHoldsMock).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('catalog.sync task key', () => {
   it('is a known task key', () => {
     expect(isKnownTaskKey('catalog.sync')).toBe(true);
+  });
+});
+
+describe('reservation.expire-holds task key', () => {
+  it('is a known task key', () => {
+    expect(isKnownTaskKey('reservation.expire-holds')).toBe(true);
   });
 });
 
@@ -123,6 +139,7 @@ function exhaustiveOverKnownTaskKeys(taskKey: ExtendedTaskKey): string {
   switch (taskKey) {
     case 'notification.drain':
     case 'catalog.sync':
+    case 'reservation.expire-holds':
       return 'handled';
     default: {
       // @ts-expect-error - ExtendedTaskKey has a member ('extra.stale.task')

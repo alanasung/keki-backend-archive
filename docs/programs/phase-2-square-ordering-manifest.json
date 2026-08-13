@@ -3,7 +3,7 @@
     "id": "phase-2-square-ordering",
     "name": "Phase 2 Square Ordering",
     "description": "Production Square integration and a customer ordering page: Square Catalog as the menu source of truth, orders with participant-assigned class seats and atomic seat holding, Square-hosted checkout, real webhook signature verification and fulfillment, and database-level reservation capacity enforcement.",
-    "status": "in_progress",
+    "status": "complete",
     "created": "2026-08-10",
     "revision": 2,
     "revisionNote": "Replanned after converge returned requires-replan (2 blockers, 8 majors, critic gpt-5.6-terra). See the Revision history section of the program document."
@@ -229,7 +229,7 @@
       "id": "WS-05",
       "name": "commerce-core: order lifecycle, seat holding, and real startCheckout",
       "taskFile": "tasks/phase-2-square-ordering/WS-05-order-lifecycle.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "L",
       "dependencies": [
         "WS-02",
@@ -246,7 +246,7 @@
       "id": "WS-06",
       "name": "reservation-core: capacity enforcement, holds, and expiry",
       "taskFile": "tasks/phase-2-square-ordering/WS-06-reservation-capacity.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "L",
       "dependencies": [
         "WS-02"
@@ -262,7 +262,7 @@
       "id": "WS-07",
       "name": "Server Action foundation and authenticated mutation wrapper",
       "taskFile": "tasks/phase-2-square-ordering/WS-07-server-action-foundation.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "S",
       "dependencies": [
         "WS-01"
@@ -277,7 +277,7 @@
       "id": "WS-08",
       "name": "Ordering page: cafe menu and class listing",
       "taskFile": "tasks/phase-2-square-ordering/WS-08-ordering-page.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-04",
@@ -293,7 +293,7 @@
       "id": "WS-09",
       "name": "Cart, participant selection, and review page",
       "taskFile": "tasks/phase-2-square-ordering/WS-09-cart-participants.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-05",
@@ -311,7 +311,7 @@
       "id": "WS-10",
       "name": "Webhook fulfillment: confirm orders and reservations on payment",
       "taskFile": "tasks/phase-2-square-ordering/WS-10-webhook-fulfillment.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-03",
@@ -330,7 +330,7 @@
       "id": "WS-11",
       "name": "Infrastructure: Square secrets, catalog schedule, public Function URL",
       "taskFile": "tasks/phase-2-square-ordering/WS-11-infrastructure.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "S",
       "dependencies": [
         "WS-03",
@@ -346,7 +346,7 @@
       "id": "WS-12",
       "name": "Test coverage, end-to-end specs, and documentation",
       "taskFile": "tasks/phase-2-square-ordering/WS-12-tests-and-docs.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-10",
@@ -364,7 +364,7 @@
       "id": "WS-13",
       "name": "Checkout action, Square composition root, and order status page",
       "taskFile": "tasks/phase-2-square-ordering/WS-13-checkout-composition.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-05",

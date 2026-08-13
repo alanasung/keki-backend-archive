@@ -22,6 +22,7 @@ import { defineWorkspace } from 'vitest/config';
 // `vitest.config.ts` files), so those two are referenced directly instead.
 const nodeProjects: Record<string, string> = {
   '@keki/auth': 'packages/auth',
+  '@keki/catalog-core': 'packages/catalog-core',
   '@keki/commerce-core': 'packages/commerce-core',
   '@keki/contracts': 'packages/contracts',
   '@keki/customer-core': 'packages/customer-core',
@@ -29,11 +30,21 @@ const nodeProjects: Record<string, string> = {
   '@keki/notification-core': 'packages/notification-core',
   '@keki/pass-core': 'packages/pass-core',
   '@keki/reservation-core': 'packages/reservation-core',
+  '@keki/square-client': 'packages/square-client',
   '@keki/infra': 'infra',
   '@keki/notification-worker': 'functions/notification-worker',
   '@keki/reconciliation-worker': 'functions/reconciliation-worker',
   '@keki/scheduled-task-worker': 'functions/scheduled-task-worker',
   '@keki/square-webhook': 'functions/square-webhook',
+  // Not a pnpm workspace package (no package.json — `scripts/` is a plain
+  // script directory, exempt from AGENTS.md's "every package defines all
+  // four scripts" convention, same as scripts/deployed-stage-smoke.ts and
+  // scripts/publish-sample-message.ts). Registered here anyway so
+  // assert-integration-tests-ran.test.ts actually executes under `pnpm exec
+  // vitest run` — the command WS-12's CI audit step uses to produce the
+  // JSON report it then audits — rather than existing as dead test code no
+  // command ever runs.
+  '@keki/scripts': 'scripts',
 };
 
 export default defineWorkspace([

@@ -1,6 +1,6 @@
 import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import type { SquareWebhookMessage } from '@keki/contracts';
-import { verifyWebhookSignature } from './verify-signature';
+import { verifySquareSignature } from '@keki/square-client';
 
 // Minimal local shape rather than depending on a specific `@types/aws-lambda`
 // event-name export — a Lambda Function URL delivers the same payload shape
@@ -26,6 +26,17 @@ function getQueueUrl(): string {
   const url = process.env['SQUARE_WEBHOOK_QUEUE_URL'];
   if (url === undefined || url === '') {
     throw new Error('httpHandler: SQUARE_WEBHOOK_QUEUE_URL is not configured.');
+  }
+  return url;
+}
+
+// Must match what is registered in Square's dashboard character for
+// character — a trailing-slash difference produces a verifier that rejects
+// every genuine delivery, and the failure looks identical to an attack.
+function getNotificationUrl(): string {
+  const url = process.env['SQUARE_NOTIFICATION_URL'];
+  if (url === undefined || url === '') {
+    throw new Error('httpHandler: SQUARE_NOTIFICATION_URL is not configured.');
   }
   return url;
 }
@@ -60,8 +71,18 @@ export async function httpHandler(event: LambdaFunctionURLEvent): Promise<{ stat
 
   if (
     signature === undefined ||
-    !verifyWebhookSignature({ rawBody, signature, signingKey: getSigningKey() })
+    !verifySquareSignature({
+      rawBody,
+      signature,
+      signingKey: getSigningKey(),
+      notificationUrl: getNotificationUrl(),
+    })
   ) {
+    // Matches infra/alarms.ts's SIGNATURE_FAILURE_LOG_PATTERN — the Function
+    // URL is public (WS-11/SC-11), so a burst of these is either an attack
+    // or a misconfigured SquareNotificationUrl, and a rejected request never
+    // reaches a queue or DLQ where it would otherwise be visible.
+    console.warn('square-webhook http: signature verification failed');
     return { statusCode: 401 };
   }
 

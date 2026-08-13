@@ -84,6 +84,28 @@ jobs:
       - run: pnpm -r test
       - run: pnpm -r build
 
+      # WS-12: `pnpm -r test` (above) is what actually gates CI, but it runs
+      # every package's `test` script independently and produces no combined
+      # report the next step could inspect. `vitest.workspace.ts` already
+      # exists for exactly this — "local convenience and coverage
+      # aggregation" — so it is reused here to produce one JSON report
+      # covering every `integration:` suite in the repo. This re-runs the
+      # suite a second time rather than parsing `pnpm -r test`'s per-package
+      # output; the tests are deterministic and the redundancy is what keeps
+      # this step decoupled from the exact shape of `pnpm -r`'s own output.
+      - name: Generate consolidated Vitest report
+        run: pnpm exec vitest run --reporter=json --outputFile=vitest-report.json
+
+      # Fails loudly when any `integration:` suite reports zero executed
+      # tests, or when one of the four suites this program's risk register
+      # names (capacity concurrency, schema constraints, webhook
+      # idempotency, catalog sync) is absent entirely — see
+      # scripts/assert-integration-tests-ran.ts. Runs here, in the job that
+      # provisioned the Neon branch above, so DATABASE_URL_POOLED/DIRECT are
+      # already in scope and those suites are expected to have actually run.
+      - name: Audit integration test coverage
+        run: pnpm exec tsx scripts/assert-integration-tests-ran.ts vitest-report.json
+
       # Keyed on the lockfile: the browser build is pinned by the
       # @playwright/test version resolved there. `install --with-deps` below
       # is still run on a cache hit — it no-ops the download and only installs
@@ -99,6 +121,28 @@ jobs:
 
       - name: Run e2e tests
         run: pnpm test:e2e
+
+      # WS-12 SC-20's sandbox-fulfillment.spec.ts uses the real Square client
+      # and a deployed webhook endpoint, so it is gated on SQUARE_ACCESS_TOKEN
+      # and self-skips without it (see that file). This repository does not
+      # set SQUARE_ACCESS_TOKEN as a CI secret — no deployed stage exists for
+      # pull-request CI to target (docs/testing.md "Deployed-stage tests") —
+      # so it is always expected to skip here. This step exists so that
+      # absence reads as "acknowledged and skipped" in the run summary rather
+      # than looking like nothing was ever supposed to run.
+      - name: Report Square sandbox fulfillment test coverage
+        if: always()
+        run: |
+          {
+            echo "### Square sandbox fulfillment test (SC-20)";
+            if [ -z "${SQUARE_ACCESS_TOKEN:-}" ]; then
+              echo "Skipped — \`SQUARE_ACCESS_TOKEN\` is not set in CI. This does not fail the build. Run " \
+                   "\`sandbox-fulfillment.spec.ts\` manually before a production release — see " \
+                   "\`docs/testing.md\` \"Deployed-stage tests\".";
+            else
+              echo "\`SQUARE_ACCESS_TOKEN\` is set — \`sandbox-fulfillment.spec.ts\` ran as part of the e2e step above.";
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Playwright report
         if: failure()

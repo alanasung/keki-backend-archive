@@ -1,3 +1,4 @@
+import type { ScheduledTaskMessage } from "@keki/contracts";
 import type { QueueResources } from "./queues";
 
 export const SCHEDULER_ROLE_NAME = "SchedulerExecutionRole";
@@ -46,4 +47,68 @@ export function createSchedulerRole(resources: QueueResources): aws.iam.Role {
   });
 
   return role;
+}
+
+// ---------------------------------------------------------------------------
+// WS-11 step 5: the two EventBridge Scheduler schedules that keep the
+// program running without a human triggering it — `catalog.sync` bounds
+// catalog staleness (the mitigation named in the program's risk register)
+// and `reservation.expire-holds` reclaims abandoned seats. Both target
+// `ScheduledTaskQueue` through `createSchedulerRole`'s execution role above
+// and send the same versioned envelope `scheduled-task-worker` already
+// parses (`scheduledTaskMessageSchema`) — no second message shape.
+// ---------------------------------------------------------------------------
+
+export interface ScheduleDefinition {
+  readonly name: string;
+  readonly taskKey: string;
+  readonly rateMinutes: number;
+}
+
+// The hold TTL is 15 minutes (reservation-core); a sweep slower than that
+// would leave seats unsellable well past expiry, so the sweep interval must
+// stay strictly less than it.
+const HOLD_TTL_MINUTES = 15;
+
+export const SCHEDULE_DEFINITIONS: readonly ScheduleDefinition[] = [
+  { name: "CatalogSyncSchedule", taskKey: "catalog.sync", rateMinutes: 15 },
+  { name: "ExpireHoldsSchedule", taskKey: "reservation.expire-holds", rateMinutes: HOLD_TTL_MINUTES / 3 },
+];
+
+// Pure so the payload can be asserted against `scheduledTaskMessageSchema`
+// without constructing any AWS resource (test 13). `occurredAt` is fixed at
+// synthesis time — EventBridge Scheduler's target `input` is a static
+// string set when the schedule is created, not templated per firing, and
+// the worker (`functions/scheduled-task-worker/src/handler.ts`) never reads
+// it for these task keys, only `payload.taskKey`.
+export function buildScheduledTaskMessage(taskKey: string, occurredAt: string = new Date().toISOString()): ScheduledTaskMessage {
+  return {
+    version: 1,
+    type: "scheduled.tick",
+    occurredAt,
+    payload: { taskKey },
+  };
+}
+
+export function createSchedules(
+  resources: QueueResources,
+  schedulerRole: aws.iam.Role,
+): readonly aws.scheduler.Schedule[] {
+  const scheduledTaskQueue = resources.queues.ScheduledTaskQueue;
+  if (scheduledTaskQueue === undefined) {
+    throw new Error('No "ScheduledTaskQueue" among the created queues.');
+  }
+
+  return SCHEDULE_DEFINITIONS.map(
+    (definition) =>
+      new aws.scheduler.Schedule(definition.name, {
+        scheduleExpression: `rate(${definition.rateMinutes} minutes)`,
+        flexibleTimeWindow: { mode: "OFF" },
+        target: {
+          arn: scheduledTaskQueue.arn,
+          roleArn: schedulerRole.arn,
+          input: JSON.stringify(buildScheduledTaskMessage(definition.taskKey)),
+        },
+      }),
+  );
 }

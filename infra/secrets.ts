@@ -5,7 +5,18 @@ export const SECRET_NAMES = [
   "NeonPooledUrl",
   "NeonDirectUrl",
   "SquareAccessToken",
+  "SquareEnvironment",
   "SquareWebhookSignatureKey",
+  // Configured, not derived: `infra/queues.ts` cannot read the webhook
+  // Function URL back into that same function's own environment (the URL is
+  // an output *of* the function), so this is set by hand after the first
+  // deploy of a stage and checked for agreement on every deploy after
+  // (`infra/index.ts`'s `assertSquareNotificationUrlMatches`).
+  "SquareNotificationUrl",
+  "CartCookieSecret",
+  // Secret-shaped rather than derived from a request header on purpose —
+  // WS-13's Square redirect URL must come from server configuration.
+  "AppBaseUrl",
   "KlaviyoApiKey",
   "WaiverProviderApiKey",
   "KioskDeviceToken",

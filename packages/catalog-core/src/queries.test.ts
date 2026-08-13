@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+// Safe as a static import: drizzle-orm validates no environment, unlike
+// @keki/database, which the rest of this file imports dynamically so a
+// skipped run never triggers its eager env check.
+import { eq } from 'drizzle-orm';
 import type { OccurrenceStatus, OfferingStatus, OfferingType, ReservationStatus } from '@keki/contracts';
 
 const hasLiveDatabase =
@@ -189,15 +193,32 @@ describe.skipIf(!hasLiveDatabase)('integration: catalog-core queries', () => {
 
     it('clamps seatsRemaining at zero rather than going negative', async () => {
       const { listBookableOfferings } = await import('./queries');
+      const { db, occurrences } = await import('@keki/database');
 
+      // Reaching an over-subscribed occurrence takes care now that the WS-02
+      // trigger exists: it refuses any insert that would exceed capacity, so
+      // seeding 5 seats against a 1-seat occurrence is simply rejected and
+      // the test fails in setup rather than at its assertion.
+      //
+      // Shrinking capacity *after* the booking is the path that remains open,
+      // and it is the realistic one — the trigger guards `reservations`, not
+      // `occurrences`, so staff reducing `capacity_override` on an already
+      // booked class produces exactly this state. That is the case worth
+      // protecting against: the page must render "sold out", not "-4 seats".
       const { household, customer } = await seedHouseholdAndCustomer();
-      const offering = await seedOffering({ defaultCapacity: 1 });
+      const offering = await seedOffering({ defaultCapacity: 5 });
       const occurrence = await seedOccurrence(offering.id);
       await seedReservation(occurrence.id, household.id, customer.id, 'CONFIRMED', 5);
+
+      await db
+        .update(occurrences)
+        .set({ capacityOverride: 1 })
+        .where(eq(occurrences.id, occurrence.id));
 
       const result = await listBookableOfferings();
       const row = result.find((r) => r.occurrenceId === occurrence.id);
 
+      // 1 - 5 = -4 before clamping.
       expect(row?.seatsRemaining).toBe(0);
     });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 const hasLiveDatabase =
   Boolean(process.env['DATABASE_URL_POOLED']) && Boolean(process.env['DATABASE_URL_DIRECT']);
@@ -12,6 +12,27 @@ const hasLiveDatabase =
 // never triggers @keki/database's eager env validation at import time (see
 // packages/notification-core/src/outbox.test.ts for the same pattern).
 describe.skipIf(!hasLiveDatabase)('integration: expireStaleHolds (SC-09)', () => {
+  // `expireStaleHolds` sweeps every expired hold in the table, not just the
+  // occurrence a given test seeded, so each test needs an empty table to
+  // count against. Without this, holds accumulate across the file: "respects
+  // the limit" deliberately leaves 7 of its 10 unexpired, and the sweep
+  // below then found those plus its own 10 and reported 17.
+  //
+  // TRUNCATE rather than ordered DELETEs because `households` and
+  // `customers` reference each other, so no delete order satisfies both.
+  // Safe now that `pnpm test` runs one package at a time — see the root
+  // test script and the comment on CI's test step.
+  beforeEach(async () => {
+    const { db } = await import('@keki/database');
+    const { sql } = await import('drizzle-orm');
+    await db.execute(sql`
+      truncate table
+        offerings, occurrences, reservations, reservation_participants,
+        households, customers, children, orders, order_line_items
+      restart identity cascade
+    `);
+  });
+
   async function seedHouseholdAndCustomer() {
     const { db, households, customers } = await import('@keki/database');
     const [household] = await db

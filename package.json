@@ -12,7 +12,7 @@
     "sst:dev": "sst dev",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
+    "test": "pnpm -r --workspace-concurrency=1 test",
     "test:coverage": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=text --coverage.reporter=lcov",
     "test:e2e": "playwright test",
     "build": "pnpm -r build",

@@ -15,36 +15,26 @@ const hasLiveDatabase =
 // packages/notification-core/src/outbox.test.ts for the same pattern).
 describe.skipIf(!hasLiveDatabase)('integration: reservation commands', () => {
   beforeEach(async () => {
-    const {
-      db,
-      orderLineItems,
-      orders,
-      reservationParticipants,
-      reservations,
-      children,
-      customers,
-      households,
-      occurrences,
-      offerings,
-    } = await import('@keki/database');
-    // Delete order rows first. This suite creates none, but it shares a
-    // database branch with every other suite in the run, and `orders`
-    // references both `customers` and `households` — so a leftover order
-    // from another suite makes `delete from customers` below fail with
-    // `orders_created_by_customer_id_customers_id_fk`, taking down every
-    // test in this file rather than just the one that left the row.
+    const { db } = await import('@keki/database');
+    const { sql } = await import('drizzle-orm');
+
+    // One TRUNCATE rather than an ordered chain of DELETEs, because no
+    // ordering can work here: `households.primary_customer_id` references
+    // `customers`, and `customers.household_id` references `households`, so
+    // whichever goes first violates the other's foreign key.
     //
-    // Line items go before orders: they reference `orders`, `reservations`,
-    // and `occurrences`, all of which are deleted below.
-    await db.delete(orderLineItems);
-    await db.delete(orders);
-    await db.delete(reservationParticipants);
-    await db.delete(reservations);
-    await db.delete(children);
-    await db.delete(customers);
-    await db.delete(households);
-    await db.delete(occurrences);
-    await db.delete(offerings);
+    // Ordered deletes were also fragile for a second reason. Every
+    // integration suite in a CI run shares one Neon branch and cleans in
+    // `beforeEach`, so each leaves its final test's rows behind for the next
+    // suite to trip over — and any workstream adding a table that references
+    // `customers` silently broke this block. TRUNCATE ... CASCADE is
+    // order-independent and needs no maintenance when the schema grows.
+    await db.execute(sql`
+      truncate table
+        offerings, occurrences, reservations, reservation_participants,
+        households, customers, children, orders, order_line_items
+      restart identity cascade
+    `);
   });
 
   async function seedHouseholdAndCustomer() {

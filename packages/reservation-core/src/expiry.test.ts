@@ -163,7 +163,10 @@ describe.skipIf(!hasLiveDatabase)('integration: expireStaleHolds (SC-09)', () =>
   it('respects the limit', async () => {
     const { expireStaleHolds } = await import('./expiry');
 
-    const offering = await seedOffering();
+    // Capacity must cover all ten holds. The default of 5 predates the WS-02
+    // trigger, which now rejects the sixth insert — the seeding fails before
+    // the sweep under test ever runs.
+    const offering = await seedOffering(10);
     const occurrence = await seedOccurrence(offering.id);
     const { household, customer } = await seedHouseholdAndCustomer();
     const now = new Date();
@@ -182,7 +185,8 @@ describe.skipIf(!hasLiveDatabase)('integration: expireStaleHolds (SC-09)', () =>
     async () => {
       const { expireStaleHolds } = await import('./expiry');
 
-      const offering = await seedOffering();
+      // Capacity for all ten holds, as in "respects the limit" above.
+      const offering = await seedOffering(10);
       const occurrence = await seedOccurrence(offering.id);
       const { household, customer } = await seedHouseholdAndCustomer();
       const now = new Date();

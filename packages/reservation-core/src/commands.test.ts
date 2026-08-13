@@ -17,6 +17,8 @@ describe.skipIf(!hasLiveDatabase)('integration: reservation commands', () => {
   beforeEach(async () => {
     const {
       db,
+      orderLineItems,
+      orders,
       reservationParticipants,
       reservations,
       children,
@@ -25,6 +27,17 @@ describe.skipIf(!hasLiveDatabase)('integration: reservation commands', () => {
       occurrences,
       offerings,
     } = await import('@keki/database');
+    // Delete order rows first. This suite creates none, but it shares a
+    // database branch with every other suite in the run, and `orders`
+    // references both `customers` and `households` — so a leftover order
+    // from another suite makes `delete from customers` below fail with
+    // `orders_created_by_customer_id_customers_id_fk`, taking down every
+    // test in this file rather than just the one that left the row.
+    //
+    // Line items go before orders: they reference `orders`, `reservations`,
+    // and `occurrences`, all of which are deleted below.
+    await db.delete(orderLineItems);
+    await db.delete(orders);
     await db.delete(reservationParticipants);
     await db.delete(reservations);
     await db.delete(children);

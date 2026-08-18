@@ -44,11 +44,6 @@ function findSourceFiles(dir: string): string[] {
   return results;
 }
 
-// `/checkout/mock/*` is a demo-only stand-in for Square's hosted payment
-// page, so a local demo can complete a purchase without a public webhook
-// endpoint. It refuses to render unless KEKI_ENABLE_MOCK_CHECKOUT is set and
-// NODE_ENV is not production, so it is not part of the product route tree
-// and is excluded from the brief and placeholder assertions below.
 // Demo-only routes, excluded from the product route brief and the
 // placeholder assertions below. Both refuse to render unless their flag is
 // set and NODE_ENV is not production:
@@ -76,6 +71,10 @@ const placeholderPageFiles = pageFiles.filter(
     page.urlPath !== '/book' &&
     page.urlPath !== '/cart' &&
     page.urlPath !== '/orders/[orderId]' &&
+    // `/account` reads the household, its members, and the order history —
+    // all through queries that already existed. Editing a household, passes,
+    // and waivers stay unbuilt and are labelled as such on the page itself.
+    page.urlPath !== '/account' &&
     !page.urlPath.startsWith('/auth/'),
 );
 const authPageFiles = pageFiles.filter((page) => page.urlPath.startsWith('/auth/'));
@@ -112,8 +111,10 @@ describe('nav-config', () => {
   });
 
   it('the route tree matches the brief', () => {
+    // `/account` is deliberately absent: it was built out into a read-only
+    // household, order-history, passes, and waivers view, so it is asserted
+    // with the other non-placeholder surfaces rather than here.
     const expectedUrlPaths = new Set([
-      '/account',
       '/kiosk/book',
       '/kiosk/waiver',
       '/staff/today',
@@ -124,7 +125,7 @@ describe('nav-config', () => {
       '/admin/reservations',
       '/admin/customers',
     ]);
-    expect(placeholderPageFiles).toHaveLength(10);
+    expect(placeholderPageFiles).toHaveLength(9);
     expect(new Set(placeholderPageFiles.map((page) => page.urlPath))).toEqual(expectedUrlPaths);
   });
 
@@ -165,6 +166,10 @@ describe('nav-config', () => {
       `(customer)${sep}cart${sep}`,
       `(customer)${sep}orders${sep}`,
       `(customer)${sep}checkout${sep}mock${sep}`,
+      // The account page is a read-only Server Component over
+      // customer-core's household queries and commerce-core's order history
+      // — the same sanctioned boundary as the ordering page.
+      `(customer)${sep}account${sep}`,
       'server-clients',
     ];
     const sourceFiles = findSourceFiles(appDir).filter(

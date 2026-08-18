@@ -66,8 +66,20 @@ export async function demoSignInAction(formData: FormData): Promise<void> {
     maxAge: 60 * 60 * 2,
   });
 
-  // `next` is validated at runtime but not statically known, which typed
-  // routes require — the cast is after sanitizeNextPath, never before.
+  // `next` is validated at runtime by sanitizeNextPath but is not a
+  // statically known route, which `typedRoutes: true` requires — hence the
+  // cast, applied after validation and never before.
+  //
+  // Whether that cast is *needed* depends on the environment, which is why
+  // it carries a disable directive. `tsc` only sees `RouteImpl` once Next has
+  // generated `.next/types`, so locally (after a dev run or build) the
+  // assertion is required, while in CI — where lint runs on a fresh checkout,
+  // before any build — `redirect` still accepts a plain string and the rule
+  // reports the assertion as unnecessary. Keeping the cast satisfies the
+  // stricter of the two; the directive silences the looser one. It is
+  // reported as unused rather than as an error where the cast is genuinely
+  // needed, so both environments pass.
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   redirect(next as Route);
 }
 

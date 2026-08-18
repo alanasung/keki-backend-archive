@@ -49,7 +49,20 @@ function findSourceFiles(dir: string): string[] {
 // endpoint. It refuses to render unless KEKI_ENABLE_MOCK_CHECKOUT is set and
 // NODE_ENV is not production, so it is not part of the product route tree
 // and is excluded from the brief and placeholder assertions below.
-const pageFiles = findPageFiles(appDir).filter((page) => !page.urlPath.startsWith('/checkout/mock'));
+// Demo-only routes, excluded from the product route brief and the
+// placeholder assertions below. Both refuse to render unless their flag is
+// set and NODE_ENV is not production:
+//   /checkout/mock/*    stands in for Square's hosted payment page, so a
+//                       local demo can complete a purchase without a public
+//                       webhook endpoint.
+//   /auth/demo-sign-in  installs a pre-minted token as a session, so the
+//                       authorization gate can be demonstrated before
+//                       Cognito's hosted sign-in flow exists.
+const DEMO_ONLY_ROUTE_PREFIXES = ['/checkout/mock', '/auth/demo-sign-in'];
+
+const pageFiles = findPageFiles(appDir).filter(
+  (page) => !DEMO_ONLY_ROUTE_PREFIXES.some((prefix) => page.urlPath.startsWith(prefix)),
+);
 // `/auth/*` pages (WS-09) are utility routes for the authorization boundary,
 // not tied to any of the four nav surfaces in `navConfig` — they're asserted
 // separately below rather than folded into the nav-surface route brief.

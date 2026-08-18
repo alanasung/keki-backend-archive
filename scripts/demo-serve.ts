@@ -85,6 +85,19 @@ async function main(): Promise<void> {
   console.log('2/4  Seeding the demo customer…');
   await seedTestUsers();
 
+  // One pre-minted token per seeded role, handed to the dev server so
+  // /auth/demo-sign-in can offer a button for each. Minted here rather than
+  // in the app so app code never imports the e2e signing-key fixture, and so
+  // the capability exists only when this script supplied it.
+  const demoTokens: Record<string, string> = {};
+  for (const user of Object.values(TEST_USERS)) {
+    demoTokens[`KEKI_DEMO_TOKEN_${user.role}`] = await signIdToken({
+      cognitoSub: user.cognitoSub,
+      audience: COGNITO_CLIENT_ID,
+      email: user.email,
+    });
+  }
+
   console.log('3/4  Starting the dev server…');
   const devServer = spawn('pnpm', ['dev'], {
     stdio: 'inherit',
@@ -118,6 +131,11 @@ async function main(): Promise<void> {
       // a webhook it cannot deliver to localhost, so every local order would
       // stop at AWAITING_PAYMENT. Refused when NODE_ENV=production.
       KEKI_ENABLE_MOCK_CHECKOUT: 'true',
+      // Enables /auth/demo-sign-in, which turns the pre-minted tokens below
+      // into a session. Phase 1 built the authorization gate but no sign-in
+      // form, so without this the gate cannot be demonstrated interactively.
+      KEKI_ENABLE_DEMO_SIGN_IN: 'true',
+      ...demoTokens,
       // Deliberately NOT setting KEKI_ALLOW_SQUARE_STUB: the point of this
       // demo is the real Square integration, so checkout builds a real
       // sandbox payment link. Set it to 'true' if you would rather clicking

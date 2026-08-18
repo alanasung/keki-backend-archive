@@ -1,7 +1,13 @@
 import 'dotenv/config';
 import { spawn } from 'node:child_process';
 import { chromium } from '@playwright/test';
-import { ID_TOKEN_COOKIE_NAME } from '@keki/auth';
+// The `@keki/auth/cookies` subpath, not the package root: the root barrel
+// pulls in env.ts, which validates COGNITO_USER_POOL_ID / COGNITO_CLIENT_ID /
+// AWS_REGION at import time. This script sets those for the dev server it
+// spawns, but they are not in its own environment, so importing the root
+// would fail before it could start anything. e2e/global-setup.ts imports the
+// same constant the same way for the same reason.
+import { ID_TOKEN_COOKIE_NAME } from '@keki/auth/cookies';
 import {
   CA_CERT_PATH,
   ensureKeyMaterial,
@@ -94,8 +100,24 @@ async function main(): Promise<void> {
       DATABASE_URL_POOLED: pooled,
       DATABASE_URL_DIRECT: direct,
       NODE_EXTRA_CA_CERTS: CA_CERT_PATH,
+      // NODE_EXTRA_CA_CERTS is read once, at process start. `next dev`
+      // re-execs its server worker, and the worker is what verifies tokens —
+      // so the CA can arrive too late there and the JWKS fetch fails with
+      // "self-signed certificate", which surfaces as an unexplained redirect
+      // to /auth/sign-in. This is read per-connection instead, so it holds
+      // wherever the worker ends up.
+      //
+      // Scope: this process tree only, on localhost, for a demo whose JWKS
+      // server is a fixture with a self-signed certificate. Nothing in
+      // production sets it — real Cognito is reached over public TLS.
+      NODE_TLS_REJECT_UNAUTHORIZED: '0',
       CART_COOKIE_SECRET,
       APP_BASE_URL,
+      // Routes checkout to the local mock payment page instead of Square's
+      // hosted one. Square's page works, but it reports payment back through
+      // a webhook it cannot deliver to localhost, so every local order would
+      // stop at AWAITING_PAYMENT. Refused when NODE_ENV=production.
+      KEKI_ENABLE_MOCK_CHECKOUT: 'true',
       // Deliberately NOT setting KEKI_ALLOW_SQUARE_STUB: the point of this
       // demo is the real Square integration, so checkout builds a real
       // sandbox payment link. Set it to 'true' if you would rather clicking
@@ -114,7 +136,15 @@ async function main(): Promise<void> {
   await waitForServer(BASE_URL, DEV_SERVER_READY_TIMEOUT_MS);
 
   console.log('4/4  Opening a signed-in browser…');
-  const idToken = await signIdToken({ cognitoSub: TEST_USERS.CUSTOMER.cognitoSub });
+  // `audience` is required: verify-token.ts checks `aud` against
+  // COGNITO_CLIENT_ID, and a token without it fails with "Missing Client ID".
+  // resolveSession swallows that as `anonymous`, so the only visible symptom
+  // is an unexplained redirect to /auth/sign-in.
+  const idToken = await signIdToken({
+    cognitoSub: TEST_USERS.CUSTOMER.cognitoSub,
+    audience: COGNITO_CLIENT_ID,
+    email: TEST_USERS.CUSTOMER.email,
+  });
 
   const browser = await chromium.launch({
     headless: false,

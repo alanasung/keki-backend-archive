@@ -44,7 +44,12 @@ function findSourceFiles(dir: string): string[] {
   return results;
 }
 
-const pageFiles = findPageFiles(appDir);
+// `/checkout/mock/*` is a demo-only stand-in for Square's hosted payment
+// page, so a local demo can complete a purchase without a public webhook
+// endpoint. It refuses to render unless KEKI_ENABLE_MOCK_CHECKOUT is set and
+// NODE_ENV is not production, so it is not part of the product route tree
+// and is excluded from the brief and placeholder assertions below.
+const pageFiles = findPageFiles(appDir).filter((page) => !page.urlPath.startsWith('/checkout/mock'));
 // `/auth/*` pages (WS-09) are utility routes for the authorization boundary,
 // not tied to any of the four nav surfaces in `navConfig` — they're asserted
 // separately below rather than folded into the nav-surface route brief.
@@ -136,11 +141,17 @@ describe('nav-config', () => {
     // server-side price resolution) as a third; WS-13 adds the composition
     // root and the order status page as a fourth. Every other page stays a
     // placeholder.
+    // `(customer)/checkout/mock/**` is the demo-only stand-in for Square's
+    // hosted payment page. It reads the order and drives the same two
+    // transitions the webhook consumer performs, so it is a sanctioned
+    // boundary on the same terms as the others — and it refuses to render
+    // outside a flagged, non-production environment.
     const exemptPrefixes = [
       `actions${sep}`,
       `(customer)${sep}book${sep}`,
       `(customer)${sep}cart${sep}`,
       `(customer)${sep}orders${sep}`,
+      `(customer)${sep}checkout${sep}mock${sep}`,
       'server-clients',
     ];
     const sourceFiles = findSourceFiles(appDir).filter(

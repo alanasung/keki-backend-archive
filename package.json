@@ -29,9 +29,11 @@
     "@aws-sdk/client-sqs": "^3.700.0",
     "@keki/auth": "workspace:*",
     "@keki/catalog-core": "workspace:*",
+    "@keki/commerce-core": "workspace:*",
     "@keki/contracts": "workspace:*",
     "@keki/database": "workspace:*",
     "@keki/notification-core": "workspace:*",
+    "@keki/reservation-core": "workspace:*",
     "@keki/square-client": "workspace:*",
     "@keki/ui": "workspace:*",
     "drizzle-orm": "^0.45.2"

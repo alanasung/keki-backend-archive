@@ -16,10 +16,33 @@ import * as schema from './schema';
 // constraint tests. This makes that pattern reusable instead of duplicating
 // pool/websocket setup in every package that needs a real transaction, which
 // AGENTS.md "Data access" reserves for this package alone.
+
+// Node 22 (.nvmrc) ships a native global `WebSocket`; prefer it, and keep
+// `ws` only as the fallback for a runtime that lacks one.
+//
+// `ws` guards its optional native `bufferutil` addon behind a try/catch
+// `require`, and `bufferutil` is not installed here — under Node's own
+// resolution that require throws and `ws` masks frames in JS instead. But
+// this module is also pulled into Next's server bundle (checkout calls
+// `withTransaction` through commerce-core's `createOrder`), and there the
+// require resolves to an empty module rather than throwing: the fallback
+// never engages and the first frame over ws's 48-byte threshold dies on
+// `bufferUtil.mask is not a function`, taking the Neon socket down with it.
+// Next's `serverExternalPackages` cannot fix that from apps/web — pnpm's
+// strict node_modules layout leaves `ws` unresolvable from there, which is
+// where Next resolves that list. Native `WebSocket` carries no addon and no
+// masking code of its own, so the hazard goes away instead of being routed
+// around.
+//
+// migrate.ts and schema.test.ts still import `ws` directly: both run in plain
+// Node under tsx/vitest, never through a bundler, so the guarded require
+// behaves and there is nothing to avoid.
+const webSocketConstructor = globalThis.WebSocket ?? (ws as unknown as typeof WebSocket);
+
 let pool: Pool | undefined;
 function getPool(): Pool {
   if (pool === undefined) {
-    neonConfig.webSocketConstructor = ws;
+    neonConfig.webSocketConstructor = webSocketConstructor;
     pool = new Pool({ connectionString: getDatabaseEnv().pooled });
   }
   return pool;

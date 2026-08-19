@@ -83,6 +83,11 @@ describe.skipIf(!hasLiveDatabase)('commerce-core commands', () => {
   // the same reasoning. Structural typing still makes this object assignable
   // wherever `SquareClient` is expected.
   function stubSquareClient(overrides: { createCheckout?: ReturnType<typeof vi.fn> } = {}) {
+    // Unique per stub instance because `orders.square_order_id` is UNIQUE and
+    // these live-database suites share one Neon branch that is never truncated
+    // -- not between test files in a run, and not between CI runs. A fixed
+    // literal here collided with order-state.test.ts's own fixture.
+    const squareOrderId = `square-order-${crypto.randomUUID()}`;
     return {
       listCatalogItems: vi.fn(),
       createCheckout:
@@ -90,7 +95,7 @@ describe.skipIf(!hasLiveDatabase)('commerce-core commands', () => {
         vi.fn(() =>
           Promise.resolve({
             checkoutUrl: 'https://square.example/checkout/1',
-            squareOrderId: 'square-order-1',
+            squareOrderId,
           }),
         ),
       getPayment: vi.fn(),

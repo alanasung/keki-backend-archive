@@ -130,14 +130,18 @@ describe.skipIf(!hasLiveDatabase)('integration: transitionOrder', () => {
     const { createOrderId } = await import('@keki/contracts');
 
     const order = await seedOrder('DRAFT');
+    // Unique per run because `orders.square_order_id` is UNIQUE and this suite
+    // shares one never-truncated Neon branch with commands.test.ts, which
+    // persists a squareOrderId of its own through startCheckout.
+    const squareOrderId = `square-order-${crypto.randomUUID()}`;
 
     const result = await transitionOrder({
       orderId: createOrderId(order.id),
       to: 'AWAITING_PAYMENT',
-      patch: { squareOrderId: 'square-order-1', squareCheckoutUrl: 'https://square.example/checkout/1' },
+      patch: { squareOrderId, squareCheckoutUrl: 'https://square.example/checkout/1' },
     });
 
-    expect(result.order.squareOrderId).toBe('square-order-1');
+    expect(result.order.squareOrderId).toBe(squareOrderId);
     expect(result.order.squareCheckoutUrl).toBe('https://square.example/checkout/1');
   });
 });

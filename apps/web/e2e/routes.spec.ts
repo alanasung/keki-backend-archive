@@ -1,6 +1,11 @@
-// SC-04: all eleven placeholder routes load. Asserting the placeholder panel
-// (not just a 200) is deliberate — see the WS-12 spec step 6 — it proves the
-// route is scaffolded rather than accidentally rendering a blank body.
+// SC-04: every scaffolded route loads. Asserting the placeholder panel (not
+// just a 200) is deliberate — see the WS-12 spec step 6 — it proves the route
+// is scaffolded rather than accidentally rendering a blank body.
+//
+// Which routes are still placeholders is tracked in nav-config.test.ts; the
+// two lists have to agree. `/book` (WS-08) and `/account` were built out into
+// real pages and no longer render a placeholder panel, so they moved to the
+// smoke block below.
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { createKioskContext, createRoleContext } from './fixtures/session';
 
@@ -35,15 +40,6 @@ test.describe('placeholder routes', () => {
     );
   });
 
-  for (const path of ['/book', '/account']) {
-    test(`${path} renders for CUSTOMER`, async ({ browser }) => {
-      await withPage(
-        () => createRoleContext(browser, 'CUSTOMER'),
-        (page) => expectScaffoldedPage(page, path),
-      );
-    });
-  }
-
   for (const path of ['/kiosk/book', '/kiosk/waiver']) {
     test(`${path} renders with the kiosk device cookie`, async ({ browser }) => {
       await withPage(
@@ -67,6 +63,25 @@ test.describe('placeholder routes', () => {
       await withPage(
         () => createRoleContext(browser, 'MANAGER'),
         (page) => expectScaffoldedPage(page, path),
+      );
+    });
+  }
+});
+
+// Built out past the placeholder stage, so there is no panel to assert. This
+// is a load-bearing smoke check only — that the route still serves a page to
+// a CUSTOMER rather than 500ing on a query. `/book`'s actual behaviour is
+// covered by ordering.spec.ts.
+test.describe('built-out routes', () => {
+  for (const path of ['/book', '/account']) {
+    test(`${path} renders for CUSTOMER`, async ({ browser }) => {
+      await withPage(
+        () => createRoleContext(browser, 'CUSTOMER'),
+        async (page) => {
+          const response = await page.goto(path);
+          expect(response?.status()).toBe(200);
+          await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+        },
       );
     });
   }

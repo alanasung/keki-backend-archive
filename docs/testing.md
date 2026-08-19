@@ -259,7 +259,13 @@ against a stage you've already deployed with `sst deploy --stage <name>`.
    `DATABASE_URL_POOLED`/`DATABASE_URL_DIRECT` are already in scope and every
    `integration:` suite is expected to have actually executed rather than
    skipped.
-6. `pnpm exec playwright install --with-deps chromium`, then `pnpm test:e2e`.
+6. `pnpm exec playwright install chromium`, then `pnpm test:e2e`. Deliberately
+   not `--with-deps`: that runs `apt-get` as root to place Chromium's shared
+   libraries, which the `ubuntu-latest` image already ships. It once hung on
+   an unreachable Ubuntu mirror until the run was cancelled five hours in.
+   If a future runner image really is missing a library, add
+   `playwright install-deps chromium` as its own step rather than folding apt
+   back into the install.
 7. Writes a note to the run summary recording whether `SQUARE_ACCESS_TOKEN`
    was set (and therefore whether `sandbox-fulfillment.spec.ts` ran or was
    acknowledged as skipped) — see "Sandbox payment-to-fulfillment" above.

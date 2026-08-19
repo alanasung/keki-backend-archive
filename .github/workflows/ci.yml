@@ -74,6 +74,53 @@ jobs:
           branch_name: ci-${{ github.run_id }}-${{ github.run_attempt }}
           api_key: ${{ secrets.NEON_API_KEY }}
 
+      # `create-branch-action` collapses an API rejection into a bare
+      # "Failed to create branch. AggregateError" and discards the response
+      # body, which is unactionable — it cannot be told apart from a quota
+      # refusal, a permission change, or a bad project id. This re-asks the
+      # API directly and prints what it actually says. Runs only when the step
+      # above failed, so healthy runs are untouched.
+      #
+      # Values rendered as `***` are GitHub masking a secret, not empty
+      # fields. The final POST creates a real branch if the API is in fact
+      # willing; it is named `ci-*` so cleanup-neon-branches.yml sweeps it
+      # within 24 hours, since this run's delete step has no branch_id to
+      # work from.
+      - name: Diagnose Neon branch creation failure
+        if: failure() && steps.neon-branch.outcome == 'failure'
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          base="https://console.neon.tech/api/v2"
+          auth="Authorization: Bearer $NEON_API_KEY"
+          body=/tmp/neon-body.json
+
+          # No `-f`: a non-2xx body is exactly what this step exists to show.
+          show() {
+            echo "HTTP $1"
+            jq . "$body" 2>/dev/null || cat "$body"
+            echo
+          }
+
+          # Can the key see anything at all, and which org does it belong to?
+          echo "--- GET /projects"
+          show "$(curl -s -o "$body" -w '%{http_code}' -H "$auth" "$base/projects")"
+
+          # Does the project this repo points at exist, and what are its
+          # limits and consumption to date?
+          echo "--- GET /projects/<id>"
+          show "$(curl -s -o "$body" -w '%{http_code}' -H "$auth" "$base/projects/$NEON_PROJECT_ID")"
+
+          # How many branches already exist, against the plan's cap?
+          echo "--- GET /projects/<id>/branches"
+          show "$(curl -s -o "$body" -w '%{http_code}' -H "$auth" "$base/projects/$NEON_PROJECT_ID/branches")"
+
+          # And the actual refusal, with its message intact.
+          echo "--- POST /projects/<id>/branches"
+          payload='{"branch":{"name":"ci-diagnose-'"$GITHUB_RUN_ID"'"},"endpoints":[{"type":"read_write"}]}'
+          show "$(curl -s -o "$body" -w '%{http_code}' -X POST -H "$auth" -H 'Content-Type: application/json' -d "$payload" "$base/projects/$NEON_PROJECT_ID/branches")"
+
       - name: Export database URLs
         run: |
           echo "DATABASE_URL_POOLED=${{ steps.neon-branch.outputs.db_url_pooled }}" >> "$GITHUB_ENV"

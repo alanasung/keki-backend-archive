@@ -37,6 +37,12 @@ env:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # GitHub's default job timeout is 6 hours. Nothing here legitimately runs
+    # for more than a few minutes, so a hung network step (an apt mirror that
+    # never answers, a dev server that never binds) would otherwise burn
+    # hours of runner time before failing. 30 minutes is well clear of a slow
+    # but healthy run.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -119,17 +125,24 @@ jobs:
         run: pnpm exec tsx scripts/assert-integration-tests-ran.ts vitest-report.json
 
       # Keyed on the lockfile: the browser build is pinned by the
-      # @playwright/test version resolved there. `install --with-deps` below
-      # is still run on a cache hit — it no-ops the download and only installs
-      # OS packages.
+      # @playwright/test version resolved there. The install below is still
+      # run on a cache hit — it no-ops the download and just verifies the
+      # browser is present.
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # Deliberately NOT `--with-deps`: that switches to root and runs
+      # `apt-get update && apt-get install` for Chromium's shared libraries,
+      # which the `ubuntu-latest` image already ships. It bought nothing and
+      # cost the job everything the one time Azure's Ubuntu mirrors stopped
+      # answering — apt retried until the run was cancelled. The browser
+      # binary itself still has to be downloaded; the e2e suite drives a real
+      # Chromium.
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install chromium
 
       - name: Run e2e tests
         run: pnpm test:e2e

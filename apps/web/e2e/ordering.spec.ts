@@ -165,7 +165,13 @@ test('a forged cart cookie carrying unitPriceCents is rejected end to end and cr
     const ordersBefore = await countOrdersForHousehold(householdId);
 
     await checkoutButton.click();
-    await expect(page.getByRole('alert')).toHaveText('Your cart is empty.');
+    // Scoped to the checkout control, which renders its error as a sibling of
+    // the button. An unscoped `page.getByRole('alert')` is ambiguous: Next
+    // keeps a permanent, usually-empty `role="alert"` route announcer
+    // (`#__next-route-announcer__`) in the body, so the query resolves to two
+    // elements and fails on strict mode rather than on the assertion.
+    const checkoutError = checkoutButton.locator('xpath=..').getByRole('alert');
+    await expect(checkoutError).toHaveText('Your cart is empty.');
     expect(new URL(page.url()).pathname).toBe('/cart');
 
     const ordersAfter = await countOrdersForHousehold(householdId);

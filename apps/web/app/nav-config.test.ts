@@ -44,7 +44,20 @@ function findSourceFiles(dir: string): string[] {
   return results;
 }
 
-const pageFiles = findPageFiles(appDir);
+// Demo-only routes, excluded from the product route brief and the
+// placeholder assertions below. Both refuse to render unless their flag is
+// set and NODE_ENV is not production:
+//   /checkout/mock/*    stands in for Square's hosted payment page, so a
+//                       local demo can complete a purchase without a public
+//                       webhook endpoint.
+//   /auth/demo-sign-in  installs a pre-minted token as a session, so the
+//                       authorization gate can be demonstrated before
+//                       Cognito's hosted sign-in flow exists.
+const DEMO_ONLY_ROUTE_PREFIXES = ['/checkout/mock', '/auth/demo-sign-in'];
+
+const pageFiles = findPageFiles(appDir).filter(
+  (page) => !DEMO_ONLY_ROUTE_PREFIXES.some((prefix) => page.urlPath.startsWith(prefix)),
+);
 // `/auth/*` pages (WS-09) are utility routes for the authorization boundary,
 // not tied to any of the four nav surfaces in `navConfig` — they're asserted
 // separately below rather than folded into the nav-surface route brief.
@@ -58,6 +71,10 @@ const placeholderPageFiles = pageFiles.filter(
     page.urlPath !== '/book' &&
     page.urlPath !== '/cart' &&
     page.urlPath !== '/orders/[orderId]' &&
+    // `/account` reads the household, its members, and the order history —
+    // all through queries that already existed. Editing a household, passes,
+    // and waivers stay unbuilt and are labelled as such on the page itself.
+    page.urlPath !== '/account' &&
     !page.urlPath.startsWith('/auth/'),
 );
 const authPageFiles = pageFiles.filter((page) => page.urlPath.startsWith('/auth/'));
@@ -94,8 +111,10 @@ describe('nav-config', () => {
   });
 
   it('the route tree matches the brief', () => {
+    // `/account` is deliberately absent: it was built out into a read-only
+    // household, order-history, passes, and waivers view, so it is asserted
+    // with the other non-placeholder surfaces rather than here.
     const expectedUrlPaths = new Set([
-      '/account',
       '/kiosk/book',
       '/kiosk/waiver',
       '/staff/today',
@@ -106,7 +125,7 @@ describe('nav-config', () => {
       '/admin/reservations',
       '/admin/customers',
     ]);
-    expect(placeholderPageFiles).toHaveLength(10);
+    expect(placeholderPageFiles).toHaveLength(9);
     expect(new Set(placeholderPageFiles.map((page) => page.urlPath))).toEqual(expectedUrlPaths);
   });
 
@@ -136,11 +155,21 @@ describe('nav-config', () => {
     // server-side price resolution) as a third; WS-13 adds the composition
     // root and the order status page as a fourth. Every other page stays a
     // placeholder.
+    // `(customer)/checkout/mock/**` is the demo-only stand-in for Square's
+    // hosted payment page. It reads the order and drives the same two
+    // transitions the webhook consumer performs, so it is a sanctioned
+    // boundary on the same terms as the others — and it refuses to render
+    // outside a flagged, non-production environment.
     const exemptPrefixes = [
       `actions${sep}`,
       `(customer)${sep}book${sep}`,
       `(customer)${sep}cart${sep}`,
       `(customer)${sep}orders${sep}`,
+      `(customer)${sep}checkout${sep}mock${sep}`,
+      // The account page is a read-only Server Component over
+      // customer-core's household queries and commerce-core's order history
+      // — the same sanctioned boundary as the ordering page.
+      `(customer)${sep}account${sep}`,
       'server-clients',
     ];
     const sourceFiles = findSourceFiles(appDir).filter(

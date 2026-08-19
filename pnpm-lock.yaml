@@ -17,6 +17,9 @@ importers:
       '@keki/catalog-core':
         specifier: workspace:*
         version: link:packages/catalog-core
+      '@keki/commerce-core':
+        specifier: workspace:*
+        version: link:packages/commerce-core
       '@keki/contracts':
         specifier: workspace:*
         version: link:packages/contracts
@@ -26,6 +29,9 @@ importers:
       '@keki/notification-core':
         specifier: workspace:*
         version: link:packages/notification-core
+      '@keki/reservation-core':
+        specifier: workspace:*
+        version: link:packages/reservation-core
       '@keki/square-client':
         specifier: workspace:*
         version: link:packages/square-client

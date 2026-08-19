@@ -81,7 +81,14 @@ jobs:
       # means (WS-12 spec acceptance criterion 6).
       - run: pnpm -r typecheck
       - run: pnpm -r lint
-      - run: pnpm -r test
+      # `pnpm test`, not `pnpm -r test`: the root script pins
+      # --workspace-concurrency=1. Every integration suite in this repo shares
+      # the one Neon branch created above and wipes its tables in `beforeEach`,
+      # so packages running concurrently (the .npmrc default is 4) delete each
+      # other's rows mid-test. That surfaced as unrelated-looking failures —
+      # a notification_outbox row vanishing, catalog-core inserts rejected —
+      # rather than anything wrong with the code under test.
+      - run: pnpm test
       - run: pnpm -r build
 
       # WS-12: `pnpm -r test` (above) is what actually gates CI, but it runs
@@ -93,8 +100,13 @@ jobs:
       # suite a second time rather than parsing `pnpm -r test`'s per-package
       # output; the tests are deterministic and the redundancy is what keeps
       # this step decoupled from the exact shape of `pnpm -r`'s own output.
+      # --no-file-parallelism for the same reason `pnpm test` above pins
+      # workspace concurrency to 1: this runs every workspace project in one
+      # vitest process, which parallelizes test files across projects by
+      # default and would put the integration suites back to wiping each
+      # other's rows on the shared Neon branch.
       - name: Generate consolidated Vitest report
-        run: pnpm exec vitest run --reporter=json --outputFile=vitest-report.json
+        run: pnpm exec vitest run --no-file-parallelism --reporter=json --outputFile=vitest-report.json
 
       # Fails loudly when any `integration:` suite reports zero executed
       # tests, or when one of the four suites this program's risk register

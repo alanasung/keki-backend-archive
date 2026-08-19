@@ -1,6 +1,11 @@
 'use server';
 
-import { createOrder, ParticipantNotInHouseholdError, startCheckout } from '@keki/commerce-core';
+import {
+  createOrder,
+  ParticipantNotInHouseholdError,
+  startCheckout,
+  transitionOrder,
+} from '@keki/commerce-core';
 import type { Session } from '@keki/auth';
 import type { OrderId } from '@keki/contracts';
 import { z } from 'zod';
@@ -75,6 +80,21 @@ export const checkoutAction = authenticatedAction({
     // Host-derived redirect is attacker-controllable and would send a
     // paying customer to another origin after checkout.
     const redirectUrl = `${appBaseUrl()}/orders/${orderId}`;
+
+    // Demo path: send the customer to the local mock checkout instead of
+    // Square. Square's hosted page works fine, but the payment it completes
+    // is only reflected back through a webhook, and Square cannot deliver
+    // one to localhost — so a local demo would strand every order at
+    // AWAITING_PAYMENT. The mock page performs the same transitions the
+    // webhook consumer performs.
+    //
+    // Refused in production by both conditions, and the order is left
+    // AWAITING_PAYMENT exactly as the Square path leaves it.
+    if (process.env['NODE_ENV'] !== 'production' && process.env['KEKI_ENABLE_MOCK_CHECKOUT'] === 'true') {
+      await transitionOrder({ orderId, to: 'AWAITING_PAYMENT', expect: 'DRAFT' });
+      await clearCart();
+      return { checkoutUrl: `${appBaseUrl()}/checkout/mock/${orderId}` };
+    }
 
     // A SquareApiError here propagates unwrapped (mapped to UNAVAILABLE by
     // errors.ts) and the order is left DRAFT/AWAITING_PAYMENT for a retry —

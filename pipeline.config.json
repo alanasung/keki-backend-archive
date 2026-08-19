@@ -19,7 +19,7 @@
     "workspace": "test -f pnpm-workspace.yaml && test -f package.json",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
+    "test": "pnpm test",
     "build": "pnpm -r build"
   },
   "contextDocs": [

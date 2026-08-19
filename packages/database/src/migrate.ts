@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { fileURLToPath } from 'node:url';
 import { neonConfig, Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { migrate } from 'drizzle-orm/neon-serverless/migrator';
@@ -13,7 +14,14 @@ async function main(): Promise<void> {
   const db = drizzle(pool);
 
   try {
-    await migrate(db, { migrationsFolder: new URL('../drizzle', import.meta.url).pathname });
+    // fileURLToPath, not `.pathname`: the latter leaves percent-encoding in
+    // place, so a checkout under a directory with a space in its name (e.g.
+    // "Keki Backend Prod") yields ".../Keki%20Backend%20Prod/..." and the
+    // migrations folder is never found. CI only escapes this because its
+    // workspace path happens to contain no spaces.
+    await migrate(db, {
+      migrationsFolder: fileURLToPath(new URL('../drizzle', import.meta.url)),
+    });
   } finally {
     await pool.end();
   }

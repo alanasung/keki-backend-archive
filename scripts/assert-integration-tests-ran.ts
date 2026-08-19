@@ -29,6 +29,22 @@ export const REQUIRED_INTEGRATION_SUITES = [
   'integration: syncCatalog', // WS-04 catalog sync
 ] as const;
 
+// Suites gated on a live dependency this CI job deliberately does not
+// provide, so "zero executed" is the expected result rather than the
+// silent-pass failure above. `integration: Square sandbox round trip`
+// (packages/square-client/src/checkout.test.ts) needs SQUARE_ACCESS_TOKEN,
+// which docs/testing.md records as never set as a CI secret: it makes real
+// calls to Square's sandbox, so gating every pull request on it would make
+// CI depend on a third party's uptime.
+//
+// Exempt from the zero-executed rule, but still required to be *present* in
+// the report — deleting or renaming one must fail CI exactly as it does for
+// REQUIRED_INTEGRATION_SUITES. An exemption that also stopped noticing the
+// suite's disappearance would be indistinguishable from deleting it.
+export const INTENTIONALLY_SKIPPED_IN_CI = [
+  'integration: Square sandbox round trip', // needs SQUARE_ACCESS_TOKEN; run per docs/testing.md
+] as const;
+
 export interface VitestAssertionResult {
   readonly ancestorTitles: readonly string[];
   readonly status: string;
@@ -82,9 +98,10 @@ export function collectIntegrationSuites(report: VitestJsonReport): ReadonlyMap<
 export function auditIntegrationSuites(report: VitestJsonReport): readonly string[] {
   const found = collectIntegrationSuites(report);
   const failures: string[] = [];
+  const exemptFromExecution = new Set<string>(INTENTIONALLY_SKIPPED_IN_CI);
 
   for (const [name, counts] of found) {
-    if (counts.executed === 0) {
+    if (counts.executed === 0 && !exemptFromExecution.has(name)) {
       failures.push(
         `"${name}" reports zero executed tests (${counts.total} skipped) — its integration suite did not run. ` +
           'Check that DATABASE_URL_POOLED/DATABASE_URL_DIRECT (or the equivalent live-dependency env var) is set ' +
@@ -93,7 +110,7 @@ export function auditIntegrationSuites(report: VitestJsonReport): readonly strin
     }
   }
 
-  for (const requiredName of REQUIRED_INTEGRATION_SUITES) {
+  for (const requiredName of [...REQUIRED_INTEGRATION_SUITES, ...INTENTIONALLY_SKIPPED_IN_CI]) {
     if (!found.has(requiredName)) {
       failures.push(
         `Required suite "${requiredName}" was not found in the report at all — has it been renamed or deleted?`,
@@ -134,7 +151,9 @@ function main(): void {
 
   console.log(
     `assert-integration-tests-ran: OK — every "integration:" suite executed, including all ` +
-      `${REQUIRED_INTEGRATION_SUITES.length} required suites.`,
+      `${REQUIRED_INTEGRATION_SUITES.length} required suites. ${INTENTIONALLY_SKIPPED_IN_CI.length} suite(s) ` +
+      'exempt from the execution check but confirmed present: ' +
+      `${INTENTIONALLY_SKIPPED_IN_CI.join(', ')}.`,
   );
 }
 

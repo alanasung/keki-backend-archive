@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   auditIntegrationSuites,
   collectIntegrationSuites,
+  INTENTIONALLY_SKIPPED_IN_CI,
   REQUIRED_INTEGRATION_SUITES,
   type VitestAssertionResult,
   type VitestJsonReport,
@@ -19,11 +20,16 @@ function reportWith(assertionResults: readonly VitestAssertionResult[]): VitestJ
   return { testResults: [{ assertionResults }] };
 }
 
-// One passing test per required suite — the "everything is fine" baseline
-// each test below mutates, so a failure is attributable to exactly the one
-// thing that test changed rather than an accidental gap in the fixture.
+// One passing test per required suite, plus one *skipped* test per suite
+// exempted from the execution check — the exact shape a healthy CI report
+// has, and the "everything is fine" baseline each test below mutates, so a
+// failure is attributable to exactly the one thing that test changed rather
+// than an accidental gap in the fixture.
 function passingBaseline(): VitestAssertionResult[] {
-  return REQUIRED_INTEGRATION_SUITES.map((name) => ({ ancestorTitles: [name], status: 'passed' }));
+  return [
+    ...REQUIRED_INTEGRATION_SUITES.map((name) => ({ ancestorTitles: [name], status: 'passed' })),
+    ...INTENTIONALLY_SKIPPED_IN_CI.map((name) => ({ ancestorTitles: [name], status: 'skipped' })),
+  ];
 }
 
 describe('collectIntegrationSuites', () => {
@@ -82,6 +88,37 @@ describe('auditIntegrationSuites', () => {
 
     expect(failures.some((failure) => failure.includes('integration: syncCatalog'))).toBe(true);
     expect(failures.some((failure) => failure.includes('zero executed tests'))).toBe(true);
+  });
+
+  // The counterpart to the test above: a suite on INTENTIONALLY_SKIPPED_IN_CI
+  // reporting zero executed tests is the expected CI outcome, not a failure.
+  // Without this exemption the gate fails every run, because
+  // SQUARE_ACCESS_TOKEN is deliberately never set as a CI secret
+  // (docs/testing.md, "Sandbox payment-to-fulfillment").
+  it('does not fail when an exempt suite reports zero executed tests', () => {
+    const failures = auditIntegrationSuites(reportWith(passingBaseline()));
+
+    for (const exemptName of INTENTIONALLY_SKIPPED_IN_CI) {
+      expect(failures.some((failure) => failure.includes(exemptName))).toBe(false);
+    }
+    expect(failures).toEqual([]);
+  });
+
+  // The exemption covers *skipping*, never *disappearing*: an exempt suite
+  // that no longer exists must fail exactly as a required one does.
+  it('still fails when an exempt suite is absent from the report entirely', () => {
+    const exemptNames = new Set<string>(INTENTIONALLY_SKIPPED_IN_CI);
+    const assertions = passingBaseline().filter(
+      (assertion) => !exemptNames.has(assertion.ancestorTitles[0] ?? ''),
+    );
+
+    const failures = auditIntegrationSuites(reportWith(assertions));
+
+    for (const exemptName of INTENTIONALLY_SKIPPED_IN_CI) {
+      expect(
+        failures.some((failure) => failure.includes(exemptName) && failure.includes('not found')),
+      ).toBe(true);
+    }
   });
 
   // Test 11 — fails when a required suite is absent entirely (deleted), a

@@ -290,11 +290,24 @@ program's risk register names this failure mode explicitly.
 generated in CI step 5 above and fails (non-zero exit) when:
 
 - any suite whose name starts with `integration:` reports zero executed
-  (non-skipped) tests, or
-- any of the four suites named in the script
-  (`REQUIRED_INTEGRATION_SUITES`) is absent from the report entirely — a
+  (non-skipped) tests — unless it is listed in
+  `INTENTIONALLY_SKIPPED_IN_CI`, below — or
+- any suite named in `REQUIRED_INTEGRATION_SUITES` **or**
+  `INTENTIONALLY_SKIPPED_IN_CI` is absent from the report entirely — a
   distinct failure mode from merely skipped, since it catches the suite
   itself being deleted or renamed, not just its precondition going unmet.
+
+`INTENTIONALLY_SKIPPED_IN_CI` names suites whose live dependency this job
+deliberately does not provide, so "zero executed" is the expected result
+rather than the silent-pass failure the gate exists to catch. It currently
+holds one entry: `integration: Square sandbox round trip`
+(`packages/square-client/src/checkout.test.ts`), which needs
+`SQUARE_ACCESS_TOKEN` — never set as a CI secret, per "Sandbox
+payment-to-fulfillment" above, because it makes real calls to Square's
+sandbox and gating every pull request on it would put a third party's uptime
+in the critical path. The exemption covers *skipping* only: an exempt suite
+that disappears still fails the gate, so the escape hatch cannot quietly
+become a deletion.
 
 Run it locally against any Vitest JSON report:
 
@@ -314,11 +327,12 @@ is registered directly in `vitest.workspace.ts` rather than picked up by
 
 Note for future workstreams: a Vitest suite gated behind
 `RUN_DEPLOYED_STAGE_TESTS` (see "Deployed-stage tests" above) and named
-`integration: ...` would also be flagged by this audit if it is ever added,
-since pull-request CI never sets that variable. Such a suite should either
-avoid the `integration:` prefix or be excluded from `vitest.workspace.ts`,
-so it does not get audited by a gate it was deliberately built to skip in
-CI.
+`integration: ...` will also be flagged by this audit, since pull-request CI
+never sets that variable. Add it to `INTENTIONALLY_SKIPPED_IN_CI` rather
+than dropping the `integration:` prefix or removing the package from
+`vitest.workspace.ts` — both of those hide the suite from the gate
+entirely, which means deleting it later would no longer fail CI. The
+exemption list keeps that alarm wired up.
 
 ### Required repository secrets
 

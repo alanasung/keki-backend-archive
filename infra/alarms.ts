@@ -64,14 +64,22 @@ export interface SignatureFailureAlarmResources {
   readonly alarm: aws.cloudwatch.MetricAlarm;
 }
 
-// `squareWebhookHttp.name` is the physical Lambda function name; Lambda
-// creates its CloudWatch Log Group at `/aws/lambda/<function name>`
-// automatically, so no separate log group needs constructing here.
+// The log group name comes from `nodes.logGroup`, the group SST creates for
+// the function — not from `/aws/lambda/${squareWebhookHttp.name}`.
+//
+// Deriving the string looked equivalent and was not: it carries no
+// dependency on the group, so Pulumi scheduled `PutMetricFilter` before the
+// group existed and the deploy died on `ResourceNotFoundException: The
+// specified log group does not exist`. The previous comment here claimed
+// Lambda creates the group automatically, which is true only on a
+// function's *first invocation* — a newly created or replaced function has
+// none, and this deploy replaced it. Taking the name from the resource
+// gives Pulumi the edge it needs to order them.
 export function createSignatureFailureAlarm(
   squareWebhookHttp: sst.aws.Function,
   topic: aws.sns.Topic,
 ): SignatureFailureAlarmResources {
-  const logGroupName = squareWebhookHttp.name.apply((name) => `/aws/lambda/${name}`);
+  const logGroupName = squareWebhookHttp.nodes.logGroup.apply((logGroup) => logGroup.name);
 
   const metricFilter = new aws.cloudwatch.LogMetricFilter("SquareWebhookSignatureFailureFilter", {
     logGroupName,

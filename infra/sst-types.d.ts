@@ -93,8 +93,24 @@ declare namespace sst {
       constructor(name: string, args: FunctionArgs);
       readonly url: Output<string>;
       readonly arn: Output<string>;
-      /** The physical Lambda function name — e.g. to derive its CloudWatch Log Group (`/aws/lambda/<name>`). */
+      /** The physical Lambda function name. */
       readonly name: Output<string>;
+      /**
+       * SST's own child resources. `logGroup` is the function's CloudWatch
+       * Log Group: SST creates it (retention defaults to one month) rather
+       * than leaving Lambda to make it lazily on first invocation. Anything
+       * that needs the log group must take its name from here — a name
+       * derived as `/aws/lambda/<name>` carries no dependency on the group,
+       * so Pulumi is free to run the dependent resource first and fail on a
+       * group that does not exist yet.
+       *
+       * `name` is modelled as a plain `string` because Pulumi flattens the
+       * nested `Output` that the real type returns; this stand-in describes
+       * the observable result of `.apply`, not the intermediate shape.
+       */
+      readonly nodes: {
+        readonly logGroup: Output<{ readonly name: string }>;
+      };
     }
 
     interface BucketLifecycleRule {

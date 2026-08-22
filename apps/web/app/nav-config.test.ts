@@ -75,6 +75,18 @@ const placeholderPageFiles = pageFiles.filter(
     // all through queries that already existed. Editing a household, passes,
     // and waivers stay unbuilt and are labelled as such on the page itself.
     page.urlPath !== '/account' &&
+    // `/admin/offerings` (WS-06) lists, creates, edits, publishes, and
+    // archives offerings — built out past the placeholder stage, same as
+    // `/book` and `/account` above.
+    page.urlPath !== '/admin/offerings' &&
+    // `/admin/schedules` (WS-07) lists upcoming occurrences, schedules new
+    // ones, and edits/cancels existing ones — built out past the
+    // placeholder stage, same as `/admin/offerings` above.
+    page.urlPath !== '/admin/schedules' &&
+    // `/admin/reservations` (WS-08) is a read-only roster of who is booked
+    // on an occurrence — built out past the placeholder stage, same as
+    // `/admin/schedules` above.
+    page.urlPath !== '/admin/reservations' &&
     !page.urlPath.startsWith('/auth/'),
 );
 const authPageFiles = pageFiles.filter((page) => page.urlPath.startsWith('/auth/'));
@@ -120,12 +132,9 @@ describe('nav-config', () => {
       '/staff/today',
       '/staff/check-in',
       '/staff/occupancy',
-      '/admin/offerings',
-      '/admin/schedules',
-      '/admin/reservations',
       '/admin/customers',
     ]);
-    expect(placeholderPageFiles).toHaveLength(9);
+    expect(placeholderPageFiles).toHaveLength(6);
     expect(new Set(placeholderPageFiles.map((page) => page.urlPath))).toEqual(expectedUrlPaths);
   });
 
@@ -162,6 +171,30 @@ describe('nav-config', () => {
     // outside a flagged, non-production environment.
     const exemptPrefixes = [
       `actions${sep}`,
+      // WS-05's admin Server Actions: the same sanctioned data-access
+      // boundary as the top-level `actions/` module, established for the
+      // admin surface. WS-06 through WS-08 exempt the admin pages
+      // themselves as each is built — this covers only the actions module.
+      `admin${sep}actions${sep}`,
+      // The offerings page (WS-06): a Server Component listing every
+      // offering via `listOfferings`, plus the two client islands
+      // (offering-form.tsx, offering-row.tsx) that call WS-05's admin
+      // Server Actions — the same sanctioned boundary as the account page.
+      `admin${sep}offerings${sep}`,
+      // The schedules page (WS-07): a Server Component listing upcoming
+      // occurrences via `listUpcomingOccurrences` and offerings via
+      // `listOfferings`, plus the two client islands (schedule-form.tsx,
+      // occurrence-row.tsx) that call WS-05's admin Server Actions — the
+      // same sanctioned boundary as the offerings page.
+      `admin${sep}schedules${sep}`,
+      // The reservations page (WS-08): a read-only Server Component listing
+      // upcoming occurrences via `listUpcomingOccurrences`, that occurrence's
+      // reservations via `listReservationsForOccurrence`, and resolving
+      // participant names via `listParticipantsForReservation`,
+      // `getCustomerById`, and `listHouseholdMembers` — the same sanctioned
+      // boundary as the offerings and schedules pages, with no Server
+      // Actions since this surface performs no mutation.
+      `admin${sep}reservations${sep}`,
       `(customer)${sep}book${sep}`,
       `(customer)${sep}cart${sep}`,
       `(customer)${sep}orders${sep}`,

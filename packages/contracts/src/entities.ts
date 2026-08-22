@@ -41,6 +41,22 @@ export const RESERVATION_STATUSES = [
 ] as const;
 export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
 
+/**
+ * The reservation statuses that occupy a seat.
+ *
+ * This is the single authority for a rule four call sites previously each
+ * declared for themselves: the capacity trigger
+ * (`drizzle/0002_capacity_constraint.sql`), `catalog-core`'s `seatsRemaining`,
+ * `reservation-core`'s seat accounting, and `catalog-admin`'s `bookedSeats`.
+ * They must agree exactly — if one drifts, a surface advertises seats the
+ * database refuses, or hides seats that are actually free.
+ *
+ * The trigger is raw SQL and cannot import this constant, so
+ * `schema.test.ts` asserts the two match rather than trusting the comment.
+ */
+export const SEAT_CONSUMING_STATUSES = ['HELD', 'CONFIRMED', 'CHECKED_IN'] as const;
+export type SeatConsumingStatus = (typeof SEAT_CONSUMING_STATUSES)[number];
+
 export const LEDGER_REASONS = ['PURCHASE', 'REDEMPTION', 'ADJUSTMENT', 'EXPIRY', 'REFUND'] as const;
 export type LedgerReason = (typeof LEDGER_REASONS)[number];
 
@@ -110,14 +126,21 @@ export interface Child {
   updatedAt: Date;
 }
 
+// Mirrors packages/database/src/schema/catalog.ts's `offerings` table
+// exactly. WS-02 (catalog-admin) is the first writer and returns every
+// persisted column; the slimmer shape this predates (no slug/duration/
+// currency, `capacity` rather than `defaultCapacity`) had no reader to break.
 export interface Offering {
   id: OfferingId;
+  slug: string;
   type: OfferingType;
   status: OfferingStatus;
   name: string;
   description: string | null;
-  capacity: number;
+  durationMinutes: number;
+  defaultCapacity: number;
   priceCents: number;
+  currency: string;
   createdAt: Date;
   updatedAt: Date;
 }

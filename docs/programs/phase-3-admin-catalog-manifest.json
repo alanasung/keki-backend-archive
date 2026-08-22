@@ -1,0 +1,282 @@
+{
+  "program": {
+    "id": "phase-3-admin-catalog",
+    "name": "Phase 3 Admin Catalog",
+    "description": "The admin surface for the supply side: create and publish class offerings, schedule their occurrences, and see what has been booked — with every mutation recorded in staff_audit_log. Phase 2 built a working ordering system on top of offerings and occurrences that nothing could create.",
+    "status": "complete",
+    "created": "2026-08-19"
+  },
+  "technology": {
+    "newTechnology": "None — uses the existing stack",
+    "recurrence": "Out of scope; one occurrence at a time",
+    "capacityBelowBookings": "Permitted, with a warning naming the booked count",
+    "cancellingBookedOccurrences": "Refused while refunds are unbuilt",
+    "offeringTypes": "CLASS only; ROOM and OPEN_PLAY are not bookable",
+    "statusTransitions": "Transition table in contracts, mirroring ORDER_TRANSITIONS",
+    "auditTrail": "staff_audit_log written inside each mutation's transaction",
+    "mutationSurface": "Server Actions gated on MANAGER via authenticatedAction"
+  },
+  "successCriteria": [
+    {
+      "id": "SC-01",
+      "description": "A manager can create a CLASS offering with a name, description, duration, capacity, and price, and it is saved as DRAFT."
+    },
+    {
+      "id": "SC-02",
+      "description": "Offering slugs are generated from the name and stay unique when two offerings share a name."
+    },
+    {
+      "id": "SC-03",
+      "description": "Publishing moves an offering DRAFT to PUBLISHED; archiving moves it to ARCHIVED; an undeclared transition is refused."
+    },
+    {
+      "id": "SC-04",
+      "description": "A manager can schedule an occurrence for a published offering, and ends_at is derived from the offering's duration."
+    },
+    {
+      "id": "SC-05",
+      "description": "Scheduling an occurrence in the past is refused with a clear message."
+    },
+    {
+      "id": "SC-06",
+      "description": "Two overlapping occurrences of the same offering are refused."
+    },
+    {
+      "id": "SC-07",
+      "description": "A scheduled occurrence of a published offering appears on /book with its seat count."
+    },
+    {
+      "id": "SC-08",
+      "description": "Lowering capacity below the booked count succeeds, warns the manager with the booked count, and leaves /book showing zero seats rather than a negative number."
+    },
+    {
+      "id": "SC-09",
+      "description": "Cancelling an unbooked occurrence succeeds; cancelling one with confirmed reservations is refused and states why."
+    },
+    {
+      "id": "SC-10",
+      "description": "Every catalog mutation writes a staff_audit_log row naming the actor, action, and entity."
+    },
+    {
+      "id": "SC-11",
+      "description": "An audit entry never survives a mutation that rolled back."
+    },
+    {
+      "id": "SC-12",
+      "description": "Every admin action rejects a caller whose role is below MANAGER."
+    },
+    {
+      "id": "SC-13",
+      "description": "/admin/offerings lists offerings with status and supports create, edit, publish, and archive."
+    },
+    {
+      "id": "SC-14",
+      "description": "/admin/schedules lists upcoming occurrences by day with booked counts, and supports scheduling and cancellation."
+    },
+    {
+      "id": "SC-15",
+      "description": "/admin/reservations shows who is booked on an occurrence, with participant names."
+    },
+    {
+      "id": "SC-16",
+      "description": "Playwright covers creating and publishing a class, scheduling it, and seeing it appear on /book."
+    }
+  ],
+  "packages": [
+    {
+      "name": "catalog-admin",
+      "path": "packages/catalog-admin",
+      "description": "NEW. Write paths for offerings and occurrences: create, edit, guarded status transitions, scheduling, and cancellation, each recording a staff_audit_log entry in its own transaction. Separate from catalog-core, which stays a read-only customer-facing query package."
+    },
+    {
+      "name": "contracts",
+      "path": "packages/contracts",
+      "description": "Adds the offering status transition table, admin input schemas that exclude derived fields, and the audit action constants and entry type."
+    },
+    {
+      "name": "catalog-core",
+      "path": "packages/catalog-core",
+      "description": "Consumed unchanged; its read paths are what the admin surface's booked counts and the customer page both rely on."
+    },
+    {
+      "name": "reservation-core",
+      "path": "packages/reservation-core",
+      "description": "Consumed unchanged; supplies the reservation and participant reads behind /admin/reservations and the booked counts that gate cancellation."
+    },
+    {
+      "name": "database",
+      "path": "packages/database",
+      "description": "Consumed unchanged; offerings, occurrences, and staff_audit_log all already exist. This program is the first writer of staff_audit_log."
+    },
+    {
+      "name": "auth",
+      "path": "packages/auth",
+      "description": "Consumed unchanged; the admin actions pass MANAGER to the existing authorize predicate."
+    },
+    {
+      "name": "web",
+      "path": "apps/web",
+      "description": "The three admin surfaces and their Server Actions, replacing placeholders."
+    },
+    {
+      "name": "ui",
+      "path": "packages/ui",
+      "description": "Presentational primitives for the admin surfaces: status badges, form fields, and the occurrence list."
+    }
+  ],
+  "workstreams": [
+    {
+      "id": "WS-01",
+      "name": "Contracts: offering status transitions, admin input schemas, audit types",
+      "taskFile": "tasks/phase-3-admin-catalog/WS-01-contracts-admin-types.md",
+      "status": "complete",
+      "size": "S",
+      "dependencies": [],
+      "packages": [
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-02",
+      "name": "catalog-admin: offering create, edit, and guarded status transitions",
+      "taskFile": "tasks/phase-3-admin-catalog/WS-02-offering-commands.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-01"
+      ],
+      "packages": [
+        "catalog-admin",
+        "contracts",
+        "database"
+      ]
+    },
+    {
+      "id": "WS-03",
+      "name": "catalog-admin: occurrence scheduling, edit, and cancellation",
+      "taskFile": "tasks/phase-3-admin-catalog/WS-03-occurrence-commands.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-01",
+        "WS-02"
+      ],
+      "packages": [
+        "catalog-admin",
+        "contracts",
+        "database",
+        "reservation-core"
+      ]
+    },
+    {
+      "id": "WS-04",
+      "name": "Audit logging: transactional staff_audit_log writes for every mutation",
+      "taskFile": "tasks/phase-3-admin-catalog/WS-04-audit-logging.md",
+      "status": "complete",
+      "size": "S",
+      "dependencies": [
+        "WS-01",
+        "WS-02"
+      ],
+      "packages": [
+        "catalog-admin",
+        "contracts",
+        "database"
+      ]
+    },
+    {
+      "id": "WS-05",
+      "name": "Admin Server Actions with the MANAGER boundary",
+      "taskFile": "tasks/phase-3-admin-catalog/WS-05-admin-actions.md",
+      "status": "complete",
+      "size": "S",
+      "dependencies": [
+        "WS-02",
+        "WS-03"
+      ],
+      "packages": [
+        "web",
+        "auth",
+        "catalog-admin",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-06",
+      "name": "/admin/offerings: list, create, edit, publish, archive",
+      "taskFile": "tasks/phase-3-admin-catalog/WS-06-offerings-surface.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-05"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "catalog-admin"
+      ]
+    },
+    {
+      "id": "WS-07",
+      "name": "/admin/schedules: occurrence calendar, scheduling, cancellation",
+      "taskFile": "tasks/phase-3-admin-catalog/WS-07-schedules-surface.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-05"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "catalog-admin",
+        "catalog-core"
+      ]
+    },
+    {
+      "id": "WS-08",
+      "name": "/admin/reservations: who booked what, per occurrence",
+      "taskFile": "tasks/phase-3-admin-catalog/WS-08-reservations-surface.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-03"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "reservation-core",
+        "catalog-core"
+      ]
+    },
+    {
+      "id": "WS-09",
+      "name": "Tests, e2e coverage, and documentation",
+      "taskFile": "tasks/phase-3-admin-catalog/WS-09-tests-and-docs.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-06",
+        "WS-07",
+        "WS-08"
+      ],
+      "packages": [
+        "web",
+        "catalog-admin"
+      ]
+    }
+  ],
+  "outOfScope": [
+    "Recurring schedules or a series concept",
+    "Cancelling occurrences that have confirmed reservations",
+    "Refunds, and any dependency on refundPayment",
+    "ROOM and OPEN_PLAY offerings",
+    "Deleting offerings or occurrences; archive and cancel are the exits",
+    "Editing or moving an existing reservation, and check-in",
+    "/admin/customers, which stays a placeholder",
+    "Staff surfaces: /staff/today, /staff/check-in, /staff/occupancy",
+    "Play passes and waivers",
+    "Image or media upload for offerings",
+    "Bulk import of a schedule",
+    "An audit-log viewer; this program writes entries, it does not display them"
+  ]
+}

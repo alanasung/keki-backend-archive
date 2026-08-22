@@ -4,6 +4,7 @@ import {
   createCatalogItemId,
   createOccurrenceId,
   createOfferingId,
+  SEAT_CONSUMING_STATUSES,
   type BookableOccurrenceView,
   type CafeItemView,
   type OfferingType,
@@ -13,12 +14,9 @@ import {
 // display-only and are out of scope (WS-04 spec).
 const DEFAULT_OFFERING_TYPES: readonly OfferingType[] = ['CLASS'];
 
-// The same status set the WS-02 capacity trigger counts (see
-// drizzle/0002_capacity_constraint.sql and
-// packages/reservation-core/src/queries.ts's countConfirmedParticipants
-// warning). If these two disagree, the page advertises seats the database
-// will refuse, or hides seats that are actually free.
-const SEAT_CONSUMING_STATUSES = ['HELD', 'CONFIRMED', 'CHECKED_IN'] as const;
+// SEAT_CONSUMING_STATUSES comes from @keki/contracts: the capacity trigger,
+// reservation-core, and catalog-admin all count the same set, and a local
+// copy here would be free to drift from them silently.
 
 export async function listCafeItems(): Promise<readonly CafeItemView[]> {
   const rows = await db

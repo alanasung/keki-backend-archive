@@ -5,6 +5,7 @@ import {
   createCustomerId,
   createOccurrenceId,
   createReservationId,
+  SEAT_CONSUMING_STATUSES,
   type CartParticipantRef,
   type HouseholdId,
   type OccurrenceId,
@@ -91,10 +92,8 @@ export async function countConfirmedParticipants(occurrenceId: OccurrenceId): Pr
   return rows.filter((row) => row.status === 'CONFIRMED' || row.status === 'CHECKED_IN').length;
 }
 
-// The same status set the WS-02 capacity trigger counts (see
-// drizzle/0002_capacity_constraint.sql), mirroring catalog-core's
-// listBookableOfferings so the two never disagree about who owns a seat.
-const SEAT_CONSUMING_STATUSES = ['HELD', 'CONFIRMED', 'CHECKED_IN'] as const;
+// SEAT_CONSUMING_STATUSES comes from @keki/contracts — see its doc comment
+// for why this set has exactly one authority.
 
 // Display only — stale the instant it resolves; a concurrent hold can
 // consume a seat before the caller's next statement. The WS-02 capacity

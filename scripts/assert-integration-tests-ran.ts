@@ -27,6 +27,9 @@ export const REQUIRED_INTEGRATION_SUITES = [
   'integration: migrations and database-level constraints', // WS-02 schema constraints
   'integration: recordPaymentFromWebhook', // WS-10 webhook idempotency
   'integration: syncCatalog', // WS-04 catalog sync
+  'integration: catalog-admin offerings', // phase-3-admin-catalog WS-02 offering commands
+  'integration: catalog-admin occurrences', // phase-3-admin-catalog WS-03 occurrence commands
+  'integration: catalog-admin audit', // phase-3-admin-catalog WS-04 audit-in-transaction guarantee (SC-11)
 ] as const;
 
 // Suites gated on a live dependency this CI job deliberately does not

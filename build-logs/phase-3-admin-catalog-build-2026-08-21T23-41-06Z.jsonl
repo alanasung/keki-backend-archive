@@ -1,0 +1,99 @@
+{"timestamp":"2026-08-21T23:41:06.108Z","event":"build-start","programId":"phase-3-admin-catalog","plan":[{"id":"WS-01","name":"Contracts: offering status transitions, admin input schemas, audit types","taskFile":"tasks/phase-3-admin-catalog/WS-01-contracts-admin-types.md","action":"run"},{"id":"WS-02","name":"catalog-admin: offering create, edit, and guarded status transitions","taskFile":"tasks/phase-3-admin-catalog/WS-02-offering-commands.md","action":"run"},{"id":"WS-03","name":"catalog-admin: occurrence scheduling, edit, and cancellation","taskFile":"tasks/phase-3-admin-catalog/WS-03-occurrence-commands.md","action":"run"},{"id":"WS-04","name":"Audit logging: transactional staff_audit_log writes for every mutation","taskFile":"tasks/phase-3-admin-catalog/WS-04-audit-logging.md","action":"run"},{"id":"WS-05","name":"Admin Server Actions with the MANAGER boundary","taskFile":"tasks/phase-3-admin-catalog/WS-05-admin-actions.md","action":"run"},{"id":"WS-06","name":"/admin/offerings: list, create, edit, publish, archive","taskFile":"tasks/phase-3-admin-catalog/WS-06-offerings-surface.md","action":"run"},{"id":"WS-07","name":"/admin/schedules: occurrence calendar, scheduling, cancellation","taskFile":"tasks/phase-3-admin-catalog/WS-07-schedules-surface.md","action":"run"},{"id":"WS-08","name":"/admin/reservations: who booked what, per occurrence","taskFile":"tasks/phase-3-admin-catalog/WS-08-reservations-surface.md","action":"run"},{"id":"WS-09","name":"Tests, e2e coverage, and documentation","taskFile":"tasks/phase-3-admin-catalog/WS-09-tests-and-docs.md","action":"run"}],"agentCommand":"claude","verify":["workspace","typecheck","lint","test","build"],"commit":true}
+{"timestamp":"2026-08-21T23:41:06.109Z","event":"workstream-start","id":"WS-01","name":"Contracts: offering status transitions, admin input schemas, audit types"}
+{"timestamp":"2026-08-21T23:41:06.155Z","event":"agent-start","id":"WS-01","attempt":1,"promptBytes":1349}
+{"timestamp":"2026-08-21T23:43:45.113Z","event":"agent-exit","id":"WS-01","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-21T23:43:45.150Z","event":"verify-start","id":"WS-01","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-21T23:43:45.154Z","event":"verify-result","id":"WS-01","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-21T23:43:45.154Z","event":"verify-start","id":"WS-01","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-21T23:43:54.860Z","event":"verify-result","id":"WS-01","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-21T23:43:54.861Z","event":"verify-start","id":"WS-01","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-21T23:44:10.809Z","event":"verify-result","id":"WS-01","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-21T23:44:10.810Z","event":"verify-start","id":"WS-01","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-21T23:44:26.945Z","event":"verify-result","id":"WS-01","attempt":1,"name":"test","command":"pnpm test","exitCode":0,"run":1}
+{"timestamp":"2026-08-21T23:44:26.946Z","event":"verify-start","id":"WS-01","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-21T23:44:48.811Z","event":"verify-result","id":"WS-01","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-21T23:45:00.775Z","event":"test-critique","id":"WS-01","findings":[]}
+{"timestamp":"2026-08-21T23:45:00.839Z","event":"commit","id":"WS-01","sha":"16bf529"}
+{"timestamp":"2026-08-21T23:45:00.839Z","event":"workstream-complete","id":"WS-01","attempts":1}
+{"timestamp":"2026-08-21T23:45:00.839Z","event":"workstream-start","id":"WS-02","name":"catalog-admin: offering create, edit, and guarded status transitions"}
+{"timestamp":"2026-08-21T23:45:00.886Z","event":"agent-start","id":"WS-02","attempt":1,"promptBytes":1341}
+{"timestamp":"2026-08-22T00:09:06.917Z","event":"agent-exit","id":"WS-02","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-22T00:09:06.959Z","event":"verify-start","id":"WS-02","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T00:09:06.963Z","event":"verify-result","id":"WS-02","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:09:06.963Z","event":"verify-start","id":"WS-02","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T00:09:16.657Z","event":"verify-result","id":"WS-02","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:09:16.657Z","event":"verify-start","id":"WS-02","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-22T00:09:32.627Z","event":"verify-result","id":"WS-02","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:09:32.628Z","event":"verify-start","id":"WS-02","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-22T00:09:49.253Z","event":"verify-result","id":"WS-02","attempt":1,"name":"test","command":"pnpm test","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:09:49.253Z","event":"verify-start","id":"WS-02","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-22T00:10:12.067Z","event":"verify-result","id":"WS-02","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:10:24.539Z","event":"test-critique","id":"WS-02","findings":[]}
+{"timestamp":"2026-08-22T00:10:24.631Z","event":"commit","id":"WS-02","sha":"3578638"}
+{"timestamp":"2026-08-22T00:10:24.631Z","event":"workstream-complete","id":"WS-02","attempts":1}
+{"timestamp":"2026-08-22T00:10:24.632Z","event":"workstream-start","id":"WS-03","name":"catalog-admin: occurrence scheduling, edit, and cancellation"}
+{"timestamp":"2026-08-22T00:10:24.688Z","event":"agent-start","id":"WS-03","attempt":1,"promptBytes":1335}
+{"timestamp":"2026-08-22T00:23:34.971Z","event":"agent-exit","id":"WS-03","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-22T00:23:35.020Z","event":"verify-start","id":"WS-03","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T00:23:35.024Z","event":"verify-result","id":"WS-03","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:23:35.024Z","event":"verify-start","id":"WS-03","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T00:23:44.806Z","event":"verify-result","id":"WS-03","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:23:44.806Z","event":"verify-start","id":"WS-03","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-22T00:24:00.554Z","event":"verify-result","id":"WS-03","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:24:00.554Z","event":"verify-start","id":"WS-03","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-22T00:24:17.063Z","event":"verify-result","id":"WS-03","attempt":1,"name":"test","command":"pnpm test","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:24:17.063Z","event":"verify-start","id":"WS-03","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-22T00:24:38.569Z","event":"verify-result","id":"WS-03","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:24:58.684Z","event":"test-critique","id":"WS-03","findings":[]}
+{"timestamp":"2026-08-22T00:24:58.785Z","event":"commit","id":"WS-03","sha":"f02e480"}
+{"timestamp":"2026-08-22T00:24:58.785Z","event":"workstream-complete","id":"WS-03","attempts":1}
+{"timestamp":"2026-08-22T00:24:58.785Z","event":"workstream-start","id":"WS-04","name":"Audit logging: transactional staff_audit_log writes for every mutation"}
+{"timestamp":"2026-08-22T00:24:58.849Z","event":"agent-start","id":"WS-04","attempt":1,"promptBytes":1339}
+{"timestamp":"2026-08-22T00:38:37.801Z","event":"agent-exit","id":"WS-04","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-22T00:38:37.838Z","event":"verify-start","id":"WS-04","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T00:38:37.841Z","event":"verify-result","id":"WS-04","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:38:37.841Z","event":"verify-start","id":"WS-04","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T00:38:47.217Z","event":"verify-result","id":"WS-04","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:38:47.217Z","event":"verify-start","id":"WS-04","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-22T00:39:02.123Z","event":"verify-result","id":"WS-04","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:39:02.124Z","event":"verify-start","id":"WS-04","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-22T00:39:19.498Z","event":"verify-result","id":"WS-04","attempt":1,"name":"test","command":"pnpm test","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:39:19.498Z","event":"verify-start","id":"WS-04","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-22T00:39:43.715Z","event":"verify-result","id":"WS-04","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:40:04.509Z","event":"test-critique","id":"WS-04","findings":[]}
+{"timestamp":"2026-08-22T00:40:04.583Z","event":"commit","id":"WS-04","sha":"89f7cc8"}
+{"timestamp":"2026-08-22T00:40:04.583Z","event":"workstream-complete","id":"WS-04","attempts":1}
+{"timestamp":"2026-08-22T00:40:04.583Z","event":"workstream-start","id":"WS-05","name":"Admin Server Actions with the MANAGER boundary"}
+{"timestamp":"2026-08-22T00:40:04.630Z","event":"agent-start","id":"WS-05","attempt":1,"promptBytes":1315}
+{"timestamp":"2026-08-22T00:52:24.794Z","event":"agent-exit","id":"WS-05","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-22T00:52:24.834Z","event":"verify-start","id":"WS-05","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T00:52:24.837Z","event":"verify-result","id":"WS-05","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:52:24.837Z","event":"verify-start","id":"WS-05","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T00:52:34.561Z","event":"verify-result","id":"WS-05","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:52:34.562Z","event":"verify-start","id":"WS-05","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-22T00:52:49.964Z","event":"verify-result","id":"WS-05","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:52:49.964Z","event":"verify-start","id":"WS-05","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-22T00:53:06.200Z","event":"verify-result","id":"WS-05","attempt":1,"name":"test","command":"pnpm test","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:53:06.200Z","event":"verify-start","id":"WS-05","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-22T00:53:28.314Z","event":"verify-result","id":"WS-05","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T00:53:44.744Z","event":"test-critique","id":"WS-05","findings":[]}
+{"timestamp":"2026-08-22T00:53:44.829Z","event":"commit","id":"WS-05","sha":"59e69e1"}
+{"timestamp":"2026-08-22T00:53:44.829Z","event":"workstream-complete","id":"WS-05","attempts":1}
+{"timestamp":"2026-08-22T00:53:44.830Z","event":"workstream-start","id":"WS-06","name":"/admin/offerings: list, create, edit, publish, archive"}
+{"timestamp":"2026-08-22T00:53:44.880Z","event":"agent-start","id":"WS-06","attempt":1,"promptBytes":1327}
+{"timestamp":"2026-08-22T01:07:08.810Z","event":"agent-exit","id":"WS-06","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-22T01:07:08.848Z","event":"verify-start","id":"WS-06","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T01:07:08.851Z","event":"verify-result","id":"WS-06","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:07:08.851Z","event":"verify-start","id":"WS-06","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T01:07:25.264Z","event":"verify-result","id":"WS-06","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:07:25.264Z","event":"verify-start","id":"WS-06","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-22T01:07:51.561Z","event":"verify-result","id":"WS-06","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:07:51.562Z","event":"verify-start","id":"WS-06","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-22T01:08:21.164Z","event":"verify-result","id":"WS-06","attempt":1,"name":"test","command":"pnpm test","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:08:21.165Z","event":"verify-start","id":"WS-06","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-22T01:08:57.291Z","event":"verify-result","id":"WS-06","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:09:15.164Z","event":"test-critique","id":"WS-06","findings":[]}
+{"timestamp":"2026-08-22T01:09:15.246Z","event":"commit","id":"WS-06","sha":"0baba22"}
+{"timestamp":"2026-08-22T01:09:15.246Z","event":"workstream-complete","id":"WS-06","attempts":1}
+{"timestamp":"2026-08-22T01:09:15.246Z","event":"workstream-start","id":"WS-07","name":"/admin/schedules: occurrence calendar, scheduling, cancellation"}
+{"timestamp":"2026-08-22T01:09:15.294Z","event":"agent-start","id":"WS-07","attempt":1,"promptBytes":1336}

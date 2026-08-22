@@ -6,7 +6,7 @@
 // it cannot reach the production bundle.
 import { catalogItems, children, customers, db, households, occurrences, offerings } from '@keki/database';
 import type { Role } from '@keki/contracts';
-import { eq } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 
 export interface TestUser {
   readonly cognitoSub: string;
@@ -224,4 +224,35 @@ async function seedChild(): Promise<void> {
 export async function seedOrderingFixtures(): Promise<void> {
   await Promise.all([seedCafeItem(), seedClassOccurrence()]);
   await seedChild();
+}
+
+// ---------------------------------------------------------------------------
+// Admin-catalog fixtures (WS-09 SC-16/SC-07): unlike the fixed-id fixtures
+// above, admin-catalog.spec.ts creates its offering through the /admin UI
+// itself, with a per-run unique name — the point of that journey is proving
+// the UI's own create/publish/schedule path produces a bookable class, not
+// seeding one directly. Nothing here is safe to upsert against, so this is a
+// delete-by-name-prefix reset rather than a seed.
+// ---------------------------------------------------------------------------
+
+export const E2E_ADMIN_CATALOG_NAME_PREFIX = 'E2E Admin Catalog';
+
+/**
+ * Deletes every offering (and its occurrences) whose name starts with
+ * `namePrefix`, in FK-safe order (occurrences before offerings). Call after
+ * admin-catalog.spec.ts's journey so repeated local runs against a
+ * persistent (non-CI) branch don't accumulate one throwaway class per run —
+ * matches every run's leftovers, not only the current one, since a run that
+ * was interrupted before its own cleanup would otherwise linger forever.
+ */
+export async function resetAdminCatalogOfferings(namePrefix: string): Promise<void> {
+  const matches = await db
+    .select({ id: offerings.id })
+    .from(offerings)
+    .where(like(offerings.name, `${namePrefix}%`));
+
+  for (const { id } of matches) {
+    await db.delete(occurrences).where(eq(occurrences.offeringId, id));
+    await db.delete(offerings).where(eq(offerings.id, id));
+  }
 }

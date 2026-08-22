@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@keki/auth": "workspace:*",
+    "@keki/catalog-admin": "workspace:*",
     "@keki/catalog-core": "workspace:*",
     "@keki/commerce-core": "workspace:*",
     "@keki/contracts": "workspace:*",

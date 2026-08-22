@@ -1,6 +1,8 @@
 import { is } from 'drizzle-orm';
 import { getTableConfig, PgTable, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { getTableName } from 'drizzle-orm';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { neonConfig, Pool } from '@neondatabase/serverless';
 import { drizzle, type NeonDatabase } from 'drizzle-orm/neon-serverless';
 import { migrate } from 'drizzle-orm/neon-serverless/migrator';
@@ -20,6 +22,7 @@ import {
   PAYMENT_STATUSES,
   RESERVATION_STATUSES,
   ROLES,
+  SEAT_CONSUMING_STATUSES,
   WAIVER_STATUSES,
 } from '@keki/contracts';
 import { getDatabaseEnv } from '../env';
@@ -183,6 +186,39 @@ describe('notification_outbox index', () => {
   });
 });
 
+// The capacity trigger is raw SQL, so it cannot import
+// SEAT_CONSUMING_STATUSES from @keki/contracts the way catalog-core,
+// reservation-core, and catalog-admin now do. This reads the migration and
+// asserts the two agree, which is the only thing standing between the
+// TypeScript side and the database side of one rule. Without it, adding a
+// status to the constant would silently leave the trigger counting the old
+// set, and a surface would advertise seats the database refuses.
+describe('capacity trigger seat-consuming statuses', () => {
+  const triggerSql = readFileSync(
+    fileURLToPath(new URL('../../drizzle/0002_capacity_constraint.sql', import.meta.url)),
+    'utf8',
+  );
+
+  it('matches SEAT_CONSUMING_STATUSES in @keki/contracts', () => {
+    // Every `status IN (...)` / `status NOT IN (...)` list in the migration.
+    const lists = [...triggerSql.matchAll(/status\s+(?:NOT\s+)?IN\s*\(([^)]*)\)/gi)].map((match) =>
+      [...(match[1] ?? '').matchAll(/'([A-Z_]+)'/g)].map((status) => status[1]).sort(),
+    );
+
+    expect(lists.length).toBeGreaterThan(0);
+    const expected = [...SEAT_CONSUMING_STATUSES].sort();
+    for (const list of lists) {
+      expect(list).toEqual(expected);
+    }
+  });
+
+  it('names only statuses that exist in RESERVATION_STATUSES', () => {
+    for (const status of SEAT_CONSUMING_STATUSES) {
+      expect(RESERVATION_STATUSES).toContain(status);
+    }
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Integration tests (cases 8-10). Require a real Neon branch reachable via
 // DATABASE_URL_DIRECT; skipped when that variable is unset (e.g. locally
@@ -200,7 +236,11 @@ describe.skipIf(!hasLiveDatabase)('integration: migrations and database-level co
     const { direct } = getDatabaseEnv();
     pool = new Pool({ connectionString: direct });
     db = drizzle(pool, { schema });
-    await migrate(db, { migrationsFolder: new URL('../../drizzle', import.meta.url).pathname });
+    // fileURLToPath, not `.pathname`: the latter leaves percent-encoding in
+    // place, so a checkout under a directory with a space in its name (e.g.
+    // "Keki Backend Prod") yields ".../Keki%20Backend%20Prod/..." and the
+    // migrations folder is never found (see src/migrate.ts's same fix).
+    await migrate(db, { migrationsFolder: fileURLToPath(new URL('../../drizzle', import.meta.url)) });
   });
 
   afterAll(async () => {

@@ -20,7 +20,9 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm test",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "integration": "pnpm test:integration-audit",
+    "e2e": "pnpm test:e2e"
   },
   "contextDocs": [
     "docs/vision.md",

@@ -7,6 +7,17 @@ import {
 } from '@keki/commerce-core';
 import { CapacityExceededError, InvalidReservationTransitionError } from '@keki/reservation-core';
 import { SquareApiError } from '@keki/square-client';
+import {
+  InvalidOccurrenceTransitionError,
+  InvalidOfferingTransitionError,
+  OccurrenceHasReservationsError,
+  OccurrenceInPastError,
+  OccurrenceNotFoundError,
+  OfferingNotFoundError,
+  OfferingNotPublishedError,
+  OverlappingOccurrenceError,
+  UnsupportedOfferingTypeError,
+} from '@keki/catalog-admin';
 import type { CartParticipantRef } from '@keki/contracts';
 import type { ActionError } from './action-result';
 
@@ -88,6 +99,38 @@ export function toActionError(error: unknown): ActionError {
 
   if (error instanceof SquareApiError) {
     return { code: 'UNAVAILABLE', message: 'Checkout is temporarily unavailable.' };
+  }
+
+  // WS-05's admin actions (offering-actions.ts, occurrence-actions.ts): each
+  // message already names the states, count, or conflicting time a manager
+  // needs to act, so it is surfaced verbatim rather than replaced with a
+  // generic one.
+  if (error instanceof InvalidOfferingTransitionError || error instanceof InvalidOccurrenceTransitionError) {
+    return { code: 'CONFLICT', message: error.message };
+  }
+
+  if (error instanceof OccurrenceHasReservationsError) {
+    return { code: 'CONFLICT', message: error.message };
+  }
+
+  if (error instanceof OverlappingOccurrenceError) {
+    return { code: 'CONFLICT', message: error.message };
+  }
+
+  if (error instanceof OfferingNotPublishedError) {
+    return { code: 'CONFLICT', message: error.message };
+  }
+
+  if (error instanceof OccurrenceInPastError) {
+    return { code: 'VALIDATION', message: error.message };
+  }
+
+  if (
+    error instanceof OfferingNotFoundError ||
+    error instanceof OccurrenceNotFoundError ||
+    error instanceof UnsupportedOfferingTypeError
+  ) {
+    return { code: 'VALIDATION', message: error.message };
   }
 
   console.error(error);

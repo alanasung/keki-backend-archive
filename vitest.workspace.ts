@@ -22,6 +22,7 @@ import { defineWorkspace } from 'vitest/config';
 // `vitest.config.ts` files), so those two are referenced directly instead.
 const nodeProjects: Record<string, string> = {
   '@keki/auth': 'packages/auth',
+  '@keki/catalog-admin': 'packages/catalog-admin',
   '@keki/catalog-core': 'packages/catalog-core',
   '@keki/commerce-core': 'packages/commerce-core',
   '@keki/contracts': 'packages/contracts',

@@ -66,9 +66,10 @@ In CI, these are supplied automatically by the dedicated per-run Neon branch
 placeholder routes — SC-04), the authorization gate (`auth.spec.ts`, the full
 `staff/`/`admin/` role matrix — SC-05), the browse-to-checkout ordering
 journey against a stubbed Square client (`ordering.spec.ts` — SC-15, see
-"Square stubbing and ordering fixtures" below), and a real Square sandbox
+"Square stubbing and ordering fixtures" below), a real Square sandbox
 payment-to-fulfillment run (`sandbox-fulfillment.spec.ts` — SC-20, see
-"Sandbox payment-to-fulfillment" below).
+"Sandbox payment-to-fulfillment" below), and the admin catalog journey
+(`admin-catalog.spec.ts` — SC-16, SC-07, see "Admin catalog journey" below).
 
 ```sh
 pnpm test:e2e                        # playwright test
@@ -176,6 +177,51 @@ must never be reachable in production:
   rejected with `VALIDATION` and no order row is created. Unit tests already
   cover this at three layers (`cartSchema`, `createOrder`, the cart cookie);
   this proves the layers compose in a running app.
+
+### Admin catalog journey (SC-16, SC-07)
+
+`admin-catalog.spec.ts` is the only spec in the suite signed in as the seeded
+`MANAGER` (`fixtures/seed.ts`'s `TEST_USERS.MANAGER`). Every other program
+workstream verifies its own surface in isolation — offering commands, the
+admin routes, the audit log — in unit or integration tests; this spec is the
+one place that proves those pieces connect end to end: creating and
+publishing a class in `/admin/offerings` and scheduling it in
+`/admin/schedules` actually produces a bookable class on `/book`, which is
+this program's whole claim.
+
+The journey runs as one continuous, serially-ordered sequence of tests
+sharing a single `BrowserContext`, each building on the offering/occurrence
+the previous step created:
+
+1. Create a class with a distinctive, per-run-unique name (never a fixed
+   name — asserting on one that already exists on the page, whether from a
+   previous run or the demo seed, is the easiest way for this journey to
+   pass while proving nothing) and a price entered in **dollars**; assert it
+   lists as `DRAFT`.
+2. Publish it; assert the status becomes `PUBLISHED`.
+3. Schedule an occurrence for it at a future time; assert it appears with
+   `0 / <capacity> booked`.
+4. Sign in as the seeded `CUSTOMER` and visit `/book`; assert the class
+   appears with the full seat count and a price that renders identically to
+   the dollars entered in step 1 — the actual proof of the dollars →
+   integer-cents → dollars round trip, not merely an equivalent-valued
+   string.
+5. Unpublish the class as the manager; assert it disappears from `/book`.
+   Publishing is the control that makes a class sellable, so this negative
+   case matters as much as the positive one.
+6. Separately, assert a `CUSTOMER` visiting `/admin/offerings` is redirected
+   to `/auth/unauthorized` — `auth.spec.ts`'s role matrix already covers this
+   route for `FRONT_OF_HOUSE`; this spec adds the `CUSTOMER` case for the one
+   route it exercises, covering the route guard (the action guard is WS-05's
+   own unit tests).
+
+Because the spec creates its offering through the UI with a generated name
+rather than at a fixed id (unlike `seedOrderingFixtures`'s cafe item and
+class, there's nothing to safely upsert against), `fixtures/seed.ts` exposes
+`resetAdminCatalogOfferings(namePrefix)` instead of a seed function: an
+`afterAll` hook deletes every offering (and its occurrences) whose name
+starts with the run's prefix, so repeated local runs against a persistent
+(non-CI) branch don't accumulate one throwaway class per run.
 
 ### Sandbox payment-to-fulfillment (SC-20)
 
@@ -286,11 +332,23 @@ needed at job scope: nothing reads them eagerly at module load (unlike
 
 This program's most important guarantees — capacity under concurrency
 (WS-06), schema-level constraints (WS-02), webhook idempotency (WS-10),
-catalog sync (WS-04) — live in `describe.skipIf(!hasLiveDatabase)` suites
-named `integration: ...`. A CI run where those silently skip (for example,
-because a future change to the job accidentally stops exporting
+catalog sync (WS-04), and — added by `phase-3-admin-catalog` — the
+catalog-admin offering commands, occurrence commands, and the
+audit-in-transaction guarantee (see "The audit-in-transaction guarantee"
+below) — live in `describe.skipIf(!hasLiveDatabase)` suites named
+`integration: ...`. A CI run where those silently skip (for example, because
+a future change to the job accidentally stops exporting
 `DATABASE_URL_POOLED`/`DATABASE_URL_DIRECT`) is green and meaningless — the
 program's risk register names this failure mode explicitly.
+
+`REQUIRED_INTEGRATION_SUITES` names each suite explicitly rather than
+matching "any suite with zero executed tests": deleting one must fail CI
+outright, not merely reduce coverage quietly. It currently holds
+`integration: reservation concurrency (SC-08)`,
+`integration: migrations and database-level constraints`,
+`integration: recordPaymentFromWebhook`, `integration: syncCatalog`,
+`integration: catalog-admin offerings`, `integration: catalog-admin
+occurrences`, and `integration: catalog-admin audit`.
 
 `scripts/assert-integration-tests-ran.ts` parses the Vitest JSON report
 generated in CI step 5 above and fails (non-zero exit) when:
@@ -330,6 +388,26 @@ the point of the risk-register entry. Its own tests
 scripts" the same way `scripts/deployed-stage-smoke.ts` already is), so it
 is registered directly in `vitest.workspace.ts` rather than picked up by
 `pnpm -r test`.
+
+### The audit-in-transaction guarantee (SC-11)
+
+`packages/catalog-admin/src/audit.test.ts`'s `integration: catalog-admin
+audit` suite asserts SC-11 not by checking that a `staff_audit_log` row
+exists after a successful mutation — that only proves the write happened to
+work this time — but by forcing the mutation itself to fail *inside* the same
+database transaction (`withTransaction`) and asserting that **both** the
+domain row and the audit row are absent afterward. A forced `insert`/`update`
+failure passed into `createOffering`/`updateOffering` via a stub `tx` proves
+`withTransaction` rolled back a real Postgres transaction, not merely that
+the override was never called.
+
+This is the stronger claim: it is not "audit entries are usually written,"
+but "an offering change and its audit entry are the same atomic operation —
+neither can happen without the other." A regression that moved the audit
+write outside the transaction (e.g. to a separate connection, or to
+`after()`-style cleanup) would still pass a present-after-success check but
+would fail this one, because the domain row would roll back while the audit
+row survived, or vice versa.
 
 Note for future workstreams: a Vitest suite gated behind
 `RUN_DEPLOYED_STAGE_TESTS` (see "Deployed-stage tests" above) and named

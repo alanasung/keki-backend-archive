@@ -15,6 +15,7 @@
     "test": "pnpm -r --workspace-concurrency=1 test",
     "test:coverage": "vitest run --coverage --coverage.provider=v8 --coverage.reporter=text --coverage.reporter=lcov",
     "test:e2e": "playwright test",
+    "test:integration-audit": "vitest run --no-file-parallelism --reporter=json --outputFile=vitest-report.json && tsx scripts/assert-integration-tests-ran.ts vitest-report.json",
     "build": "pnpm -r build",
     "db:migrate": "pnpm --filter @keki/database db:migrate",
     "publish-sample-message": "tsx scripts/publish-sample-message.ts",

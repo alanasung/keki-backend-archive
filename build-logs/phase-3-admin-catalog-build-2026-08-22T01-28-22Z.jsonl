@@ -1,0 +1,56 @@
+{"timestamp":"2026-08-22T01:28:23.005Z","event":"build-start","programId":"phase-3-admin-catalog","plan":[{"id":"WS-01","name":"Contracts: offering status transitions, admin input schemas, audit types","taskFile":"tasks/phase-3-admin-catalog/WS-01-contracts-admin-types.md","action":"skip","reason":"before start point"},{"id":"WS-02","name":"catalog-admin: offering create, edit, and guarded status transitions","taskFile":"tasks/phase-3-admin-catalog/WS-02-offering-commands.md","action":"skip","reason":"before start point"},{"id":"WS-03","name":"catalog-admin: occurrence scheduling, edit, and cancellation","taskFile":"tasks/phase-3-admin-catalog/WS-03-occurrence-commands.md","action":"skip","reason":"before start point"},{"id":"WS-04","name":"Audit logging: transactional staff_audit_log writes for every mutation","taskFile":"tasks/phase-3-admin-catalog/WS-04-audit-logging.md","action":"skip","reason":"before start point"},{"id":"WS-05","name":"Admin Server Actions with the MANAGER boundary","taskFile":"tasks/phase-3-admin-catalog/WS-05-admin-actions.md","action":"skip","reason":"before start point"},{"id":"WS-06","name":"/admin/offerings: list, create, edit, publish, archive","taskFile":"tasks/phase-3-admin-catalog/WS-06-offerings-surface.md","action":"skip","reason":"before start point"},{"id":"WS-07","name":"/admin/schedules: occurrence calendar, scheduling, cancellation","taskFile":"tasks/phase-3-admin-catalog/WS-07-schedules-surface.md","action":"run"},{"id":"WS-08","name":"/admin/reservations: who booked what, per occurrence","taskFile":"tasks/phase-3-admin-catalog/WS-08-reservations-surface.md","action":"run"},{"id":"WS-09","name":"Tests, e2e coverage, and documentation","taskFile":"tasks/phase-3-admin-catalog/WS-09-tests-and-docs.md","action":"run"}],"agentCommand":"claude","verify":["workspace","typecheck","lint","test","build"],"commit":true}
+{"timestamp":"2026-08-22T01:28:23.006Z","event":"workstream-skipped","id":"WS-01","reason":"before start point"}
+{"timestamp":"2026-08-22T01:28:23.006Z","event":"workstream-skipped","id":"WS-02","reason":"before start point"}
+{"timestamp":"2026-08-22T01:28:23.006Z","event":"workstream-skipped","id":"WS-03","reason":"before start point"}
+{"timestamp":"2026-08-22T01:28:23.007Z","event":"workstream-skipped","id":"WS-04","reason":"before start point"}
+{"timestamp":"2026-08-22T01:28:23.007Z","event":"workstream-skipped","id":"WS-05","reason":"before start point"}
+{"timestamp":"2026-08-22T01:28:23.007Z","event":"workstream-skipped","id":"WS-06","reason":"before start point"}
+{"timestamp":"2026-08-22T01:28:23.007Z","event":"workstream-start","id":"WS-07","name":"/admin/schedules: occurrence calendar, scheduling, cancellation"}
+{"timestamp":"2026-08-22T01:28:23.034Z","event":"agent-start","id":"WS-07","attempt":1,"promptBytes":1336}
+{"timestamp":"2026-08-22T01:40:04.380Z","event":"agent-exit","id":"WS-07","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-22T01:40:04.416Z","event":"verify-start","id":"WS-07","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T01:40:04.419Z","event":"verify-result","id":"WS-07","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:40:04.419Z","event":"verify-start","id":"WS-07","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T01:40:14.514Z","event":"verify-result","id":"WS-07","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:40:14.514Z","event":"verify-start","id":"WS-07","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-22T01:40:31.719Z","event":"verify-result","id":"WS-07","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:40:31.719Z","event":"verify-start","id":"WS-07","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-22T01:40:50.551Z","event":"verify-result","id":"WS-07","attempt":1,"name":"test","command":"pnpm test","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:40:50.551Z","event":"verify-start","id":"WS-07","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-22T01:41:13.503Z","event":"verify-result","id":"WS-07","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:42:25.824Z","event":"test-critique","id":"WS-07","findings":[]}
+{"timestamp":"2026-08-22T01:42:25.902Z","event":"commit","id":"WS-07","sha":"2e5200b"}
+{"timestamp":"2026-08-22T01:42:25.903Z","event":"workstream-complete","id":"WS-07","attempts":1}
+{"timestamp":"2026-08-22T01:42:25.903Z","event":"workstream-start","id":"WS-08","name":"/admin/reservations: who booked what, per occurrence"}
+{"timestamp":"2026-08-22T01:42:25.945Z","event":"agent-start","id":"WS-08","attempt":1,"promptBytes":1328}
+{"timestamp":"2026-08-22T01:54:48.156Z","event":"agent-exit","id":"WS-08","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-22T01:54:48.196Z","event":"verify-start","id":"WS-08","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T01:54:48.199Z","event":"verify-result","id":"WS-08","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:54:48.199Z","event":"verify-start","id":"WS-08","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T01:54:57.047Z","event":"verify-result","id":"WS-08","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:54:57.048Z","event":"verify-start","id":"WS-08","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-22T01:55:12.094Z","event":"verify-result","id":"WS-08","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:55:12.095Z","event":"verify-start","id":"WS-08","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-22T01:55:30.182Z","event":"verify-result","id":"WS-08","attempt":1,"name":"test","command":"pnpm test","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:55:30.182Z","event":"verify-start","id":"WS-08","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-22T01:55:52.754Z","event":"verify-result","id":"WS-08","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T01:56:05.900Z","event":"test-critique","id":"WS-08","findings":[]}
+{"timestamp":"2026-08-22T01:56:05.978Z","event":"commit","id":"WS-08","sha":"4c22b10"}
+{"timestamp":"2026-08-22T01:56:05.978Z","event":"workstream-complete","id":"WS-08","attempts":1}
+{"timestamp":"2026-08-22T01:56:05.979Z","event":"workstream-start","id":"WS-09","name":"Tests, e2e coverage, and documentation"}
+{"timestamp":"2026-08-22T01:56:06.023Z","event":"agent-start","id":"WS-09","attempt":1,"promptBytes":1308}
+{"timestamp":"2026-08-22T02:12:57.157Z","event":"agent-exit","id":"WS-09","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-22T02:12:57.195Z","event":"verify-start","id":"WS-09","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T02:12:57.198Z","event":"verify-result","id":"WS-09","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T02:12:57.198Z","event":"verify-start","id":"WS-09","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T02:13:06.131Z","event":"verify-result","id":"WS-09","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T02:13:06.131Z","event":"verify-start","id":"WS-09","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-22T02:13:20.921Z","event":"verify-result","id":"WS-09","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T02:13:20.922Z","event":"verify-start","id":"WS-09","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-22T02:13:39.599Z","event":"verify-result","id":"WS-09","attempt":1,"name":"test","command":"pnpm test","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T02:13:39.599Z","event":"verify-start","id":"WS-09","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-22T02:14:02.610Z","event":"verify-result","id":"WS-09","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T02:14:26.391Z","event":"test-critique","id":"WS-09","findings":[]}
+{"timestamp":"2026-08-22T02:14:26.469Z","event":"commit","id":"WS-09","sha":"b00b656"}
+{"timestamp":"2026-08-22T02:14:26.469Z","event":"workstream-complete","id":"WS-09","attempts":1}
+{"timestamp":"2026-08-22T02:14:26.469Z","event":"build-complete","programId":"phase-3-admin-catalog","workstreams":3}

@@ -151,6 +151,54 @@ describe('auditIntegrationSuites', () => {
 
     expect(failures.some((failure) => failure.includes('integration: reservation commands'))).toBe(false);
   });
+
+  // WS-09 spec test 11: the catalog-admin audit suite matters most — SC-11's
+  // rollback guarantee is easy to delete when it becomes inconvenient, and
+  // impossible to notice missing without this gate naming it explicitly.
+  it('fails when the catalog-admin audit suite is absent entirely', () => {
+    const assertions = passingBaseline().filter(
+      (assertion) => assertion.ancestorTitles[0] !== 'integration: catalog-admin audit',
+    );
+
+    const failures = auditIntegrationSuites(reportWith(assertions));
+
+    expect(
+      failures.some((failure) => failure.includes('integration: catalog-admin audit') && failure.includes('not found')),
+    ).toBe(true);
+  });
+
+  // WS-09 spec test 12: passes when the catalog-admin suites — offerings,
+  // occurrences, and audit — all ran with a non-zero count.
+  it('passes when the catalog-admin offering, occurrence, and audit suites all executed', () => {
+    const failures = auditIntegrationSuites(reportWith(passingBaseline()));
+
+    for (const catalogAdminSuite of [
+      'integration: catalog-admin offerings',
+      'integration: catalog-admin occurrences',
+      'integration: catalog-admin audit',
+    ]) {
+      expect(REQUIRED_INTEGRATION_SUITES).toContain(catalogAdminSuite);
+      expect(failures.some((failure) => failure.includes(catalogAdminSuite))).toBe(false);
+    }
+  });
+
+  // WS-09 spec test 13: the pre-existing zero-executed-tests behavior is
+  // unchanged by adding the catalog-admin suites above.
+  it('still fails a zero-count integration suite unrelated to catalog-admin', () => {
+    const assertions = passingBaseline().map((assertion) =>
+      assertion.ancestorTitles[0] === 'integration: reservation concurrency (SC-08)'
+        ? { ancestorTitles: assertion.ancestorTitles, status: 'skipped' }
+        : assertion,
+    );
+
+    const failures = auditIntegrationSuites(reportWith(assertions));
+
+    expect(
+      failures.some(
+        (failure) => failure.includes('integration: reservation concurrency (SC-08)') && failure.includes('zero executed tests'),
+      ),
+    ).toBe(true);
+  });
 });
 
 // Process-level smoke tests: the unit tests above prove the audit logic is

@@ -1,6 +1,7 @@
 export * from './ids';
 export * from './roles';
 export * from './entities';
+export * from './admin';
 export * from './catalog';
 export * from './orders';
 export * from './ports';

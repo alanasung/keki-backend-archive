@@ -150,7 +150,7 @@
       "id": "WS-03",
       "name": "@keki/auth: authorization URL, code exchange, refresh, sign-out",
       "taskFile": "tasks/phase-5-customer-onboarding/WS-03-auth-handshake.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-01",

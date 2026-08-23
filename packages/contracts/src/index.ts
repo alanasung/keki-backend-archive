@@ -9,3 +9,5 @@ export * from './staff';
 export * from './errors';
 export * from './integrations';
 export * from './messages';
+export * from './onboarding';
+export * from './oauth';

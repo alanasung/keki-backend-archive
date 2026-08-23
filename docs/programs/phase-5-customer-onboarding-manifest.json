@@ -3,7 +3,7 @@
     "id": "phase-5-customer-onboarding",
     "name": "Phase 5 Customer Onboarding",
     "description": "Let a real person use Keki: the Cognito hosted-UI sign-in handshake the infrastructure was provisioned for in Phase 1 and never used, first-time profile completion, and a parent's ability to add their own children. /auth/sign-in has said \"arrives in Phase 2\" through three shipped phases, and addChild has been a stub since Phase 1 in a product that sells classes for children.",
-    "status": "planning",
+    "status": "in_progress",
     "created": "2026-08-23"
   },
   "technology": {
@@ -128,10 +128,12 @@
       "id": "WS-01",
       "name": "Contracts: profile, child, and household schemas; OAuth handshake types",
       "taskFile": "tasks/phase-5-customer-onboarding/WS-01-contracts-onboarding-types.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "S",
       "dependencies": [],
-      "packages": ["contracts"]
+      "packages": [
+        "contracts"
+      ]
     },
     {
       "id": "WS-02",
@@ -140,7 +142,9 @@
       "status": "not_started",
       "size": "S",
       "dependencies": [],
-      "packages": ["infra"]
+      "packages": [
+        "infra"
+      ]
     },
     {
       "id": "WS-03",
@@ -148,8 +152,14 @@
       "taskFile": "tasks/phase-5-customer-onboarding/WS-03-auth-handshake.md",
       "status": "not_started",
       "size": "M",
-      "dependencies": ["WS-01", "WS-02"],
-      "packages": ["auth", "contracts"]
+      "dependencies": [
+        "WS-01",
+        "WS-02"
+      ],
+      "packages": [
+        "auth",
+        "contracts"
+      ]
     },
     {
       "id": "WS-04",
@@ -157,8 +167,13 @@
       "taskFile": "tasks/phase-5-customer-onboarding/WS-04-auth-routes.md",
       "status": "not_started",
       "size": "M",
-      "dependencies": ["WS-03"],
-      "packages": ["web", "auth"]
+      "dependencies": [
+        "WS-03"
+      ],
+      "packages": [
+        "web",
+        "auth"
+      ]
     },
     {
       "id": "WS-05",
@@ -166,8 +181,15 @@
       "taskFile": "tasks/phase-5-customer-onboarding/WS-05-complete-profile.md",
       "status": "not_started",
       "size": "S",
-      "dependencies": ["WS-01", "WS-04"],
-      "packages": ["web", "ui", "customer-core"]
+      "dependencies": [
+        "WS-01",
+        "WS-04"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "customer-core"
+      ]
     },
     {
       "id": "WS-06",
@@ -175,8 +197,13 @@
       "taskFile": "tasks/phase-5-customer-onboarding/WS-06-customer-write-paths.md",
       "status": "not_started",
       "size": "S",
-      "dependencies": ["WS-01"],
-      "packages": ["customer-core", "contracts"]
+      "dependencies": [
+        "WS-01"
+      ],
+      "packages": [
+        "customer-core",
+        "contracts"
+      ]
     },
     {
       "id": "WS-07",
@@ -184,8 +211,14 @@
       "taskFile": "tasks/phase-5-customer-onboarding/WS-07-account-surface.md",
       "status": "not_started",
       "size": "M",
-      "dependencies": ["WS-06"],
-      "packages": ["web", "ui", "customer-core"]
+      "dependencies": [
+        "WS-06"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "customer-core"
+      ]
     },
     {
       "id": "WS-08",
@@ -193,8 +226,14 @@
       "taskFile": "tasks/phase-5-customer-onboarding/WS-08-admin-customers.md",
       "status": "not_started",
       "size": "M",
-      "dependencies": ["WS-01"],
-      "packages": ["web", "ui", "customer-core"]
+      "dependencies": [
+        "WS-01"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "customer-core"
+      ]
     },
     {
       "id": "WS-09",
@@ -202,8 +241,16 @@
       "taskFile": "tasks/phase-5-customer-onboarding/WS-09-tests-and-docs.md",
       "status": "not_started",
       "size": "M",
-      "dependencies": ["WS-04", "WS-05", "WS-07", "WS-08"],
-      "packages": ["web", "auth"]
+      "dependencies": [
+        "WS-04",
+        "WS-05",
+        "WS-07",
+        "WS-08"
+      ],
+      "packages": [
+        "web",
+        "auth"
+      ]
     }
   ],
   "outOfScope": [

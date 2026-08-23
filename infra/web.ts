@@ -21,6 +21,12 @@ export const WEB_ENV_MAPPING = {
   DATABASE_URL_DIRECT: "NeonDirectUrl",
   COGNITO_USER_POOL_ID: "cognitoUserPoolId",
   COGNITO_CLIENT_ID: "cognitoClientId",
+  // WS-02: named explicitly rather than having the app assemble the
+  // redirect/sign-out URIs from a base URL, so the value the app sends is
+  // the same string Cognito was configured with.
+  COGNITO_HOSTED_UI_URL: "cognitoHostedUiBaseUrl",
+  COGNITO_REDIRECT_URI: "cognitoRedirectUri",
+  COGNITO_SIGN_OUT_URI: "cognitoSignOutUri",
   KIOSK_DEVICE_TOKEN: "KioskDeviceToken",
   CART_COOKIE_SECRET: "CartCookieSecret",
   APP_BASE_URL: "AppBaseUrl",
@@ -49,6 +55,9 @@ export function createWeb(params: CreateWebParams): sst.aws.Nextjs {
       DATABASE_URL_DIRECT: secrets.NeonDirectUrl.value,
       COGNITO_USER_POOL_ID: auth.userPool.id,
       COGNITO_CLIENT_ID: auth.client.id,
+      COGNITO_HOSTED_UI_URL: auth.hostedUiBaseUrl,
+      COGNITO_REDIRECT_URI: auth.redirectUri,
+      COGNITO_SIGN_OUT_URI: auth.signOutUri,
       KIOSK_DEVICE_TOKEN: secrets.KioskDeviceToken.value,
       CART_COOKIE_SECRET: secrets.CartCookieSecret.value,
       APP_BASE_URL: secrets.AppBaseUrl.value,

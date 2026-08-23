@@ -151,8 +151,24 @@ declare namespace sst {
       };
     }
 
+    // The underlying `aws.cognito.UserPoolClient` args reachable through
+    // `CognitoUserPoolClientArgs.transform.client` — the escape hatch WS-02
+    // uses for OAuth fields `addClient`'s first-class options don't cover.
+    interface CognitoUserPoolClientTransformArgs {
+      allowedOauthFlows?: Input<string[]>;
+      allowedOauthFlowsUserPoolClient?: Input<boolean>;
+      allowedOauthScopes?: Input<string[]>;
+      callbackUrls?: Input<string[]>;
+      logoutUrls?: Input<string[]>;
+      supportedIdentityProviders?: Input<string[]>;
+      generateSecret?: Input<boolean>;
+    }
+
     interface CognitoUserPoolClientArgs {
       callbackUrls?: Input<string[]>;
+      transform?: {
+        client?: (args: CognitoUserPoolClientTransformArgs) => undefined;
+      };
     }
 
     class CognitoUserPoolClient {
@@ -182,9 +198,16 @@ declare namespace sst {
 // this package actually calls — see the file-level comment above.
 declare function $resolve<T1, T2>(values: [Input<T1>, Input<T2>]): Output<[T1, T2]>;
 
+// Real Pulumi Outputs of object types lift property access (`Output<T>` is
+// `OutputInstance<T> & Lifted<T>`), so `aws.getRegionOutput().name` is
+// itself a valid `Output<string>` without an intermediate `.apply()`. This
+// stand-in models that directly rather than reproducing Pulumi's generic
+// `Lifted<T>` proxy type.
+declare function $interpolate(strings: TemplateStringsArray, ...values: Input<unknown>[]): Output<string>;
+
 declare namespace aws {
   function getCallerIdentityOutput(args?: Record<string, never>): Output<{ accountId: string }>;
-  function getRegionOutput(args?: Record<string, never>): Output<{ name: string }>;
+  function getRegionOutput(args?: Record<string, never>): { readonly name: Output<string> };
 
   namespace scheduler {
     interface ScheduleFlexibleTimeWindow {
@@ -214,6 +237,7 @@ declare namespace aws {
   namespace cognito {
     class UserPoolDomain {
       constructor(name: string, args: { domain: Input<string>; userPoolId: Input<string> });
+      readonly domain: Output<string>;
     }
   }
 

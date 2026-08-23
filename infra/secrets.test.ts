@@ -67,13 +67,16 @@ describe("infra/web.ts environment mapping", () => {
     expect(WEB_ENV_MAPPING.DATABASE_URL_POOLED).not.toBe(WEB_ENV_MAPPING.DATABASE_URL_DIRECT);
   });
 
-  it("links exactly the seven application variables, and none of the function-scoped ones", () => {
+  it("links exactly the ten application variables, and none of the function-scoped ones", () => {
     expect(Object.keys(WEB_ENV_MAPPING).sort()).toEqual(
       [
         "DATABASE_URL_POOLED",
         "DATABASE_URL_DIRECT",
         "COGNITO_USER_POOL_ID",
         "COGNITO_CLIENT_ID",
+        "COGNITO_HOSTED_UI_URL",
+        "COGNITO_REDIRECT_URI",
+        "COGNITO_SIGN_OUT_URI",
         "KIOSK_DEVICE_TOKEN",
         "CART_COOKIE_SECRET",
         "APP_BASE_URL",

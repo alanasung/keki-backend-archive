@@ -1,5 +1,5 @@
 import { createAlarms, createSignatureFailureAlarm } from "./alarms";
-import { createAuth } from "./auth";
+import { assertRedirectUriRegistered, createAuth, type AuthResources } from "./auth";
 import { assertSquareNotificationUrlMatches, attachWorkers, createQueues } from "./queues";
 import { createSchedulerRole, createSchedules } from "./scheduler";
 import { createSecrets, type Secrets } from "./secrets";
@@ -34,6 +34,18 @@ function assertNotificationUrlConfigured(secrets: Secrets, squareWebhookUrl: Out
   });
 }
 
+// WS-02 step 7: the same class of failure as `assertNotificationUrlConfigured`
+// above — resolves the redirect URI the app is handed and the Cognito
+// client's registered callback URLs, then fails the deploy on any
+// disagreement rather than letting a mismatch surface as a Cognito error
+// page with no stack trace.
+function assertRedirectUriConfigured(auth: AuthResources): void {
+  $resolve([auth.redirectUri, auth.callbackUrls]).apply(([redirectUri, callbackUrls]) => {
+    assertRedirectUriRegistered(redirectUri, callbackUrls);
+    return redirectUri;
+  });
+}
+
 export function createInfra(): {
   webUrl: Output<string>;
   bucketArn: Output<string>;
@@ -43,7 +55,8 @@ export function createInfra(): {
   assertExpectedAccount();
   const secrets = createSecrets();
   const bucket = createDocumentsBucket();
-  const auth = createAuth(`keki-${$app.stage}`);
+  const auth = createAuth({ hostedUiDomainPrefix: `keki-${$app.stage}`, appBaseUrl: secrets.AppBaseUrl.value });
+  assertRedirectUriConfigured(auth);
   const queueResources = createQueues();
 
   const { topic } = createAlarms(queueResources);

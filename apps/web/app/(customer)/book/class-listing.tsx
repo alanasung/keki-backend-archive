@@ -1,18 +1,9 @@
 import { listBookableOfferings } from '@keki/catalog-core';
 import { listHouseholdMembers } from '@keki/customer-core';
-import type { BookableOccurrenceView, Child, Customer, HouseholdMemberView } from '@keki/contracts';
+import { CAFE_TIME_ZONE, type BookableOccurrenceView, type Child, type Customer, type HouseholdMemberView } from '@keki/contracts';
 import { CatalogItemCard, EmptyState } from '@keki/ui';
 import { getSessionResult } from '../../auth/require-session';
 import { ParticipantPicker } from './participant-picker';
-
-// `occurrences.starts_at` is stored as `timestamptz` specifically so a
-// class scheduled across a DST boundary still shows the right local hour
-// (see packages/database/src/schema/catalog.ts). Rendering in the
-// server's zone or in UTC would show customers the wrong time twice a
-// year, so every formatter below is pinned to this single named constant.
-// Exported so /admin/schedules (WS-07) renders the same class at the same
-// local hour instead of declaring a second constant that could drift.
-export const CAFE_TIME_ZONE = 'America/Los_Angeles';
 
 // Below this many seats, surface a hint so a customer doesn't lose a race
 // they could have won by clicking sooner. This number is stale the moment

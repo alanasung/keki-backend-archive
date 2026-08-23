@@ -2,9 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { listUpcomingOccurrences, type AdminOccurrenceView } from '@keki/catalog-admin';
 import { listReservationsForOccurrence } from '@keki/reservation-core';
-import { createOccurrenceId, type OccurrenceId } from '@keki/contracts';
+import { CAFE_TIME_ZONE, createOccurrenceId, type OccurrenceId } from '@keki/contracts';
 import { EmptyState, PageShell } from '@keki/ui';
-import { CAFE_TIME_ZONE } from '../../(customer)/book/class-listing';
 import { OccurrenceRoster, resolveRoster } from './occurrence-roster';
 
 // Staff pull this page up mid-conversation with a customer — it must show

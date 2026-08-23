@@ -18,6 +18,7 @@
     "@keki/customer-core": "workspace:*",
     "@keki/reservation-core": "workspace:*",
     "@keki/square-client": "workspace:*",
+    "@keki/staff-ops": "workspace:*",
     "@keki/ui": "workspace:*",
     "next": "^15.5.22",
     "react": "^19.2.8",

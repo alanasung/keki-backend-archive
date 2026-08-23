@@ -1,7 +1,6 @@
 import { listOfferings, listUpcomingOccurrences, type AdminOccurrenceView } from '@keki/catalog-admin';
-import type { OccurrenceStatus, OfferingStatus } from '@keki/contracts';
+import { CAFE_TIME_ZONE, type OccurrenceStatus, type OfferingStatus } from '@keki/contracts';
 import { EmptyState, PageShell, StatusBadge, type StatusBadgeTone } from '@keki/ui';
-import { CAFE_TIME_ZONE } from '../../(customer)/book/class-listing';
 import { OccurrenceRow } from './occurrence-row';
 import { ScheduleForm } from './schedule-form';
 

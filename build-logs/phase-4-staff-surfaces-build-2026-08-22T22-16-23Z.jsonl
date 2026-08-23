@@ -1,0 +1,29 @@
+{"timestamp":"2026-08-22T22:16:23.548Z","event":"build-start","programId":"phase-4-staff-surfaces","plan":[{"id":"WS-01","name":"Contracts: reservation transitions, check-in schemas, staff audit actions, CAFE_TIME_ZONE","taskFile":"tasks/phase-4-staff-surfaces/WS-01-contracts-staff-types.md","action":"run"},{"id":"WS-02","name":"Move recordAuditEntry from catalog-admin to packages/database","taskFile":"tasks/phase-4-staff-surfaces/WS-02-audit-extraction.md","action":"run"},{"id":"WS-03","name":"staff-ops: check-in, undo, and no-show commands","taskFile":"tasks/phase-4-staff-surfaces/WS-03-check-in-commands.md","action":"run"},{"id":"WS-04","name":"staff-ops: today's schedule, roster, and occupancy queries","taskFile":"tasks/phase-4-staff-surfaces/WS-04-staff-queries.md","action":"run"},{"id":"WS-05","name":"Staff Server Actions with the FRONT_OF_HOUSE boundary","taskFile":"tasks/phase-4-staff-surfaces/WS-05-staff-actions.md","action":"run"},{"id":"WS-06","name":"/staff/today: today's occurrences with expected and arrived counts","taskFile":"tasks/phase-4-staff-surfaces/WS-06-today-surface.md","action":"run"},{"id":"WS-07","name":"/staff/check-in: per-participant check-in for an occurrence","taskFile":"tasks/phase-4-staff-surfaces/WS-07-check-in-surface.md","action":"run"},{"id":"WS-08","name":"/staff/occupancy: who is in the building now","taskFile":"tasks/phase-4-staff-surfaces/WS-08-occupancy-surface.md","action":"run"},{"id":"WS-09","name":"Tests, e2e coverage, and documentation","taskFile":"tasks/phase-4-staff-surfaces/WS-09-tests-and-docs.md","action":"run"}],"agentCommand":"claude","verify":["workspace","typecheck","lint","test","build","integration","e2e"],"commit":true}
+{"timestamp":"2026-08-22T22:16:23.549Z","event":"workstream-start","id":"WS-01","name":"Contracts: reservation transitions, check-in schemas, staff audit actions, CAFE_TIME_ZONE"}
+{"timestamp":"2026-08-22T22:16:23.595Z","event":"agent-start","id":"WS-01","attempt":1,"promptBytes":1494}
+{"timestamp":"2026-08-22T22:29:55.138Z","event":"agent-exit","id":"WS-01","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-22T22:29:55.173Z","event":"verify-start","id":"WS-01","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T22:29:55.175Z","event":"verify-result","id":"WS-01","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T22:29:55.176Z","event":"verify-start","id":"WS-01","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T22:30:03.344Z","event":"verify-result","id":"WS-01","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T22:30:03.344Z","event":"verify-start","id":"WS-01","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-22T22:30:16.841Z","event":"verify-result","id":"WS-01","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T22:30:16.841Z","event":"verify-start","id":"WS-01","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-22T22:30:43.898Z","event":"verify-result","id":"WS-01","attempt":1,"name":"test","command":"pnpm test","exitCode":1,"run":1}
+{"timestamp":"2026-08-22T22:30:43.898Z","event":"verify-start","id":"WS-01","attempt":1,"name":"test","run":2}
+{"timestamp":"2026-08-22T22:31:11.169Z","event":"verify-result","id":"WS-01","attempt":1,"name":"test","command":"pnpm test","exitCode":1,"run":2}
+{"timestamp":"2026-08-22T22:31:11.195Z","event":"agent-start","id":"WS-01","attempt":2,"promptBytes":2770}
+{"timestamp":"2026-08-22T22:34:32.467Z","event":"agent-exit","id":"WS-01","attempt":2,"exitCode":0}
+{"timestamp":"2026-08-22T22:34:32.506Z","event":"no-op-accepted","id":"WS-01","attempt":2,"kind":"prior-work-present"}
+{"timestamp":"2026-08-22T22:34:32.506Z","event":"verify-start","id":"WS-01","attempt":2,"name":"workspace","run":1}
+{"timestamp":"2026-08-22T22:34:32.509Z","event":"verify-result","id":"WS-01","attempt":2,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T22:34:32.509Z","event":"verify-start","id":"WS-01","attempt":2,"name":"typecheck","run":1}
+{"timestamp":"2026-08-22T22:34:40.791Z","event":"verify-result","id":"WS-01","attempt":2,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T22:34:40.791Z","event":"verify-start","id":"WS-01","attempt":2,"name":"lint","run":1}
+{"timestamp":"2026-08-22T22:34:54.331Z","event":"verify-result","id":"WS-01","attempt":2,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-22T22:34:54.331Z","event":"verify-start","id":"WS-01","attempt":2,"name":"test","run":1}
+{"timestamp":"2026-08-22T22:35:21.825Z","event":"verify-result","id":"WS-01","attempt":2,"name":"test","command":"pnpm test","exitCode":1,"run":1}
+{"timestamp":"2026-08-22T22:35:21.825Z","event":"verify-start","id":"WS-01","attempt":2,"name":"test","run":2}
+{"timestamp":"2026-08-22T22:35:48.411Z","event":"verify-result","id":"WS-01","attempt":2,"name":"test","command":"pnpm test","exitCode":1,"run":2}
+{"timestamp":"2026-08-22T22:35:48.438Z","event":"workstream-failed","id":"WS-01","attempts":2,"failedCommand":"pnpm test"}
+{"timestamp":"2026-08-22T22:35:48.438Z","event":"build-failed","id":"WS-01"}

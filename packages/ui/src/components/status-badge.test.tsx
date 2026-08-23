@@ -74,6 +74,7 @@ describe('packages/ui module boundary', () => {
     };
 
     expect(allDeps['@keki/catalog-admin']).toBeUndefined();
+    expect(allDeps['@keki/staff-ops']).toBeUndefined();
     expect(allDeps['@keki/database']).toBeUndefined();
   });
 });

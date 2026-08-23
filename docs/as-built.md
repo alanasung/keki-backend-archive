@@ -1,12 +1,15 @@
 # keki-backend-prod — As-Built System Snapshot
 
-<!-- Last updated: 2026-08-21 after program: phase-3-admin-catalog -->
+<!-- Last updated: 2026-08-23 after program: phase-4-staff-surfaces -->
 
-Two domains are now real end to end: **ordering** (`phase-2-square-ordering`)
+Three domains are now real end to end: **ordering** (`phase-2-square-ordering`)
 — browse the cafe menu and classes, cart, Square checkout, webhook-recorded
-payment, order history — and **admin catalog management**
+payment, order history —, **admin catalog management**
 (`phase-3-admin-catalog`) — managers create, publish, and schedule classes
-through `/admin`, with every mutation audited in `staff_audit_log`. Not every
+through `/admin`, with every mutation audited in `staff_audit_log` —, and
+**front-of-house staff surfaces** (`phase-4-staff-surfaces`) — staff see
+today's schedule, check participants in and out of arrived state per
+participant, and see who is currently in the building on `/staff`. Not every
 domain command is a stub anymore; see Known Limitations for what still is
 (play passes, waivers, payment capture/refund, kiosk, notification delivery).
 
@@ -23,10 +26,15 @@ Key exports: entity interfaces for all 16 tables (`Customer`, `Reservation`,
 `PlayPass`, `Order`, `CatalogItem`, …); status constant arrays + types
 (`ROLES`, `RESERVATION_STATUSES`, `PAYMENT_STATUSES`, `NOTIFICATION_STATUSES`,
 `ORDER_STATUSES`, `OFFERING_STATUSES`, …); transition tables
-(`OFFERING_TRANSITIONS`, `ORDER_TRANSITIONS`) and `AUDIT_ACTIONS`
-(`phase-3-admin-catalog`); `hasAtLeastRole()` role-rank predicate; Zod schemas
+(`OFFERING_TRANSITIONS`, `ORDER_TRANSITIONS`, `RESERVATION_TRANSITIONS` +
+`canTransitionReservation()`, `phase-4-staff-surfaces`) and `AUDIT_ACTIONS`
+(`phase-3-admin-catalog`, gains staff check-in/no-show members in
+`phase-4-staff-surfaces`); `hasAtLeastRole()` role-rank predicate;
+`CAFE_TIME_ZONE` (moved here from `apps/web` in `phase-4-staff-surfaces` so a
+domain package can compute today's boundaries); Zod schemas
 (`createReservationSchema`, `registerCustomerSchema`, `cartSchema`,
-`createOfferingSchema`, `scheduleOccurrenceSchema`, …); the five integration
+`createOfferingSchema`, `scheduleOccurrenceSchema`, `checkInParticipantSchema`,
+`undoCheckInParticipantSchema`, `markNoShowSchema`, …); the five integration
 interfaces (`SquareClient`, `WaiverProvider`, `MarketingProvider`,
 `TransactionalEmailProvider`, `SmsProvider`); versioned queue-message
 envelopes + schemas (`NotificationMessage`, `ReconciliationMessage`,
@@ -35,18 +43,22 @@ scheduled-task and Square webhook messages); `NotImplementedInPhase1` error.
 ### @keki/database (packages/database)
 
 Key exports: `db`, `schema`, `withTransaction` (Drizzle client over
-`@neondatabase/serverless`). `src/env.ts` validates the pooled/direct
-connection split eagerly at module load; `src/migrate.ts` runs migrations
-over the direct URL (`db:migrate`). Schema lives in `src/schema/*` (see Data
-Model). Three migrations: `0000_even_blob.sql` (the `citext` extension and
-the `play_pass_ledger` append-only BEFORE UPDATE/DELETE trigger, both
-hand-written), `0001_chief_gressill.sql` (`phase-2-square-ordering`'s
-`catalog_items`, `orders`, `order_line_items` tables), and
-`0002_capacity_constraint.sql` (hand-written: the `reservations_capacity_check`
-BEFORE INSERT/UPDATE trigger — locks the occurrence row with
-`FOR UPDATE`, sums active (`HELD`/`CONFIRMED`/`CHECKED_IN`) seats, and raises
-SQLSTATE `KEKI1` over capacity, so concurrent bookings for the same
-occurrence serialize instead of racing).
+`@neondatabase/serverless`); `recordAuditEntry` and `changedFields` (moved
+here from `@keki/catalog-admin` in `phase-4-staff-surfaces` — a single-table
+insert taking a transaction handle belongs with `withTransaction`, and both
+`catalog-admin` and the new `staff-ops` depend on `database` already;
+`catalog-admin` re-exports it so no caller broke). `src/env.ts` validates the
+pooled/direct connection split eagerly at module load; `src/migrate.ts` runs
+migrations over the direct URL (`db:migrate`). Schema lives in `src/schema/*`
+(see Data Model). Three migrations: `0000_even_blob.sql` (the `citext`
+extension and the `play_pass_ledger` append-only BEFORE UPDATE/DELETE
+trigger, both hand-written), `0001_chief_gressill.sql`
+(`phase-2-square-ordering`'s `catalog_items`, `orders`, `order_line_items`
+tables), and `0002_capacity_constraint.sql` (hand-written: the
+`reservations_capacity_check` BEFORE INSERT/UPDATE trigger — locks the
+occurrence row with `FOR UPDATE`, sums active (`HELD`/`CONFIRMED`/`CHECKED_IN`)
+seats, and raises SQLSTATE `KEKI1` over capacity, so concurrent bookings for
+the same occurrence serialize instead of racing).
 
 ### @keki/catalog-core (packages/catalog-core)
 
@@ -67,12 +79,30 @@ imported by `apps/web/app/(customer)/` or `apps/web/app/kiosk/` (enforced by
 machine — `OFFERING_TRANSITIONS` in `@keki/contracts`); `scheduleOccurrence`,
 `updateOccurrence`, `cancelOccurrence` (refuses to cancel an occurrence with
 active reservations); `listOfferings`, `listUpcomingOccurrences` (the
-admin-side views, including live `bookedSeats`); `recordAuditEntry` — every
-command above calls it in the **same transaction** as its own mutation
+admin-side views, including live `bookedSeats`); every command above calls
+`recordAuditEntry` in the **same transaction** as its own mutation
 (`withTransaction`), so a rolled-back mutation leaves no `staff_audit_log`
-row either; `staff_audit_log` had no writer before this program (see
-Known Limitations in the prior snapshot). `generateUniqueSlug`/`slugify` for
-offering slugs.
+row either — `recordAuditEntry` itself now lives in `@keki/database` (moved
+in `phase-4-staff-surfaces`; re-exported here so no caller broke).
+`generateUniqueSlug`/`slugify` for offering slugs.
+
+### @keki/staff-ops (packages/staff-ops)
+
+`phase-4-staff-surfaces`. Depends on contracts + database only — never on
+`reservation-core` or `catalog-admin`, and never imported by the customer
+surface (`apps/web/app/(customer)/`), both enforced by its own
+`package-boundaries.test.ts`. Key exports: `checkInParticipant`,
+`undoCheckInParticipant` (per-participant, writing
+`reservation_participants.checked_in_at`; roll the owning reservation's
+status between `CONFIRMED` and `CHECKED_IN` via `RESERVATION_TRANSITIONS`,
+idempotent — a repeat writes no second `staff_audit_log` row),
+`markReservationNoShow` (reservation-level; releases the seat, since
+`NO_SHOW` is not seat-consuming under the capacity trigger); `cafeDayBounds`
+(resolves "today" in `CAFE_TIME_ZONE` to UTC instants); `listTodaysOccurrences`,
+`listOccurrenceRoster`, `getCurrentOccupancy` (the three staff read paths —
+expected-vs-arrived counts, a roster by participant name, and a live
+in-progress headcount). Every mutation records a `staff_audit_log` entry in
+its own transaction, the same guarantee `catalog-admin` established.
 
 ### @keki/auth (packages/auth)
 
@@ -126,11 +156,13 @@ Next.js 15 App Router app; four route groups (see API Endpoints).
 call `@keki/auth`'s `authorize`. Server Actions now exist throughout —
 `apps/web/app/actions/authenticated-action.ts` is the one authorization
 boundary every mutation goes through (session resolution, `requiredRole`,
-Zod parse, typed `ActionResult`), consumed both by the customer cart/checkout
-actions and by `app/admin/actions/*` (the MANAGER boundary
-`phase-3-admin-catalog` built on top of it). `apps/web/app/server-clients.ts`
-is the sole composition root for `@keki/square-client`, honoring
-`KEKI_ALLOW_SQUARE_STUB` outside production only.
+Zod parse, typed `ActionResult`), consumed by the customer cart/checkout
+actions, by `app/admin/actions/*` (the MANAGER boundary
+`phase-3-admin-catalog` built on top of it), and by `app/staff/actions/*`
+(the FRONT_OF_HOUSE boundary `phase-4-staff-surfaces` built on top of it).
+`apps/web/app/server-clients.ts` is the sole composition root for
+`@keki/square-client`, honoring `KEKI_ALLOW_SQUARE_STUB` outside production
+only.
 
 Customer surface is no longer placeholder-only: `/book` (cafe items +
 bookable classes, live seat counts), `/cart` (cookie-backed, HMAC-signed),
@@ -139,7 +171,12 @@ page in dev), `/orders/[orderId]`. Admin surface
 (`phase-3-admin-catalog`): `/admin/offerings` (create/edit/publish/archive),
 `/admin/schedules` (schedule/edit-capacity/cancel occurrences),
 `/admin/reservations` (per-occurrence roster), `/admin/customers`
-(placeholder still — out of this program's scope).
+(placeholder still — out of this program's scope). Staff surface
+(`phase-4-staff-surfaces`, all reading `@keki/staff-ops`): `/staff/today`
+(today's occurrences with expected-vs-arrived counts, in the cafe's
+timezone), `/staff/check-in` (per-occurrence roster with check-in/undo/
+no-show controls), `/staff/occupancy` (live in-progress headcount, dynamic
+and never cached).
 
 ### functions/* (four Lambda workers)
 
@@ -186,7 +223,7 @@ noted. Enum values come from `@keki/contracts` constants.
 | `offerings` | slug unique, name, description, type enum (CLASS/ROOM/OPEN_PLAY), duration_minutes, default_capacity, price_cents, currency char(3), status enum (DRAFT/PUBLISHED/ARCHIVED) |
 | `occurrences` | offering_id FK, starts_at/ends_at timestamptz, capacity_override, status enum; indexes on starts_at and (offering_id, starts_at) |
 | `reservations` | occurrence_id, household_id, created_by_customer_id FKs, status enum (HELD/CONFIRMED/CHECKED_IN/CANCELLED/NO_SHOW), seat_count, hold_expires_at, notes; index (occurrence_id, status); **capacity-enforced** by the `reservations_capacity_check` trigger (`0002_capacity_constraint.sql`) — `HELD`/`CONFIRMED`/`CHECKED_IN` consume a seat under a row lock on the occurrence, `CANCELLED`/`NO_SHOW` don't |
-| `reservation_participants` | reservation_id FK (cascade), customer_id XOR child_id (CHECK constraint mirrors the contracts discriminated union), waiver_record_id FK, checked_in_at |
+| `reservation_participants` | reservation_id FK (cascade), customer_id XOR child_id (CHECK constraint mirrors the contracts discriminated union), waiver_record_id FK, checked_in_at — now actually written, by `@keki/staff-ops`'s `checkInParticipant`/`undoCheckInParticipant` (`phase-4-staff-surfaces`; the column existed since Phase 1 but no code could reach it) |
 | `catalog_items` | square_catalog_object_id, square_variation_id unique, name, description, price_cents, currency char(3), status enum (ACTIVE/ARCHIVED), synced_at — cafe items kept warm from Square's Catalog API by `syncCatalog` |
 | `orders` | household_id, created_by_customer_id FKs, status enum (DRAFT/AWAITING_PAYMENT/PAID/CANCELLED/EXPIRED), subtotal_cents, currency char(3), square_order_id unique, square_checkout_url, provider_payment_id, expires_at |
 | `order_line_items` | order_id FK (cascade), kind enum (CATALOG_ITEM/OCCURRENCE), catalog_item_id XOR occurrence_id (CHECK), reservation_id, quantity (CHECK > 0), unit_price_cents (CHECK >= 0), name_snapshot |
@@ -195,7 +232,7 @@ noted. Enum values come from `@keki/contracts` constants.
 | `payment_records` | household_id FK, reservation_id FK, provider (default SQUARE), provider_payment_id unique (webhook idempotency key), amount_cents, currency, status enum (PENDING/AUTHORIZED/CAPTURED/REFUNDED/FAILED), raw_payload jsonb, occurred_at |
 | `notification_outbox` | channel enum (EMAIL/SMS/MARKETING), template_key, recipient_customer_id FK, recipient_address, payload jsonb, status enum (PENDING/CLAIMED/SENT/FAILED/DEAD), attempts, available_at, claimed_at/claimed_by (crash lease), sent_at, last_error; index (status, available_at) |
 | `waiver_records` | provider, provider_reference unique (idempotency key), household_id FK, customer_id / child_id FKs, signed_at, expires_at, document_s3_key, status enum (SIGNED/EXPIRED/REVOKED) |
-| `staff_audit_log` | actor_customer_id FK, action, entity_type, entity_id, before/after jsonb, occurred_at, ip_address inet — written by `@keki/catalog-admin`'s `recordAuditEntry`, in the same transaction as every offering/occurrence mutation (`phase-3-admin-catalog`; previously unwritten) |
+| `staff_audit_log` | actor_customer_id FK, action, entity_type, entity_id, before/after jsonb, occurred_at, ip_address inet — written by `recordAuditEntry` (moved to `@keki/database` in `phase-4-staff-surfaces`; still called in the same transaction as every mutation, now including `@keki/staff-ops`'s check-in/undo/no-show commands alongside `catalog-admin`'s offering/occurrence commands) |
 
 Connections: application traffic uses the Neon **pooled** URL
 (`NeonPooledUrl`); migrations use the **direct** URL (`NeonDirectUrl`). The
@@ -210,7 +247,7 @@ surface, one authorization boundary each (`authenticatedAction`, see the
 
 **Customer `(customer)`** (session required): `/account`, `/book`, `/cart`, `/checkout/mock/[orderId]`, `/orders/[orderId]`
 **Kiosk `/kiosk`** (shared `KIOSK_DEVICE_TOKEN` device session): `/kiosk/book`, `/kiosk/waiver` (still placeholders)
-**Staff `/staff`** (role ≥ FRONT_OF_HOUSE): `/staff/check-in`, `/staff/occupancy` (still fake data), `/staff/today`
+**Staff `/staff`** (role ≥ FRONT_OF_HOUSE): `/staff/today`, `/staff/check-in`, `/staff/occupancy` (real, `phase-4-staff-surfaces`)
 **Admin `/admin`** (role ≥ MANAGER): `/admin/offerings`, `/admin/schedules`, `/admin/reservations` (real, `phase-3-admin-catalog`); `/admin/customers` (still placeholder)
 **Auth**: `/auth/sign-in`, `/auth/complete-profile`, `/auth/unauthorized`
 **Public**: `/` (root landing)
@@ -273,10 +310,12 @@ PENDING and eventually dead-letter via `attempts`.
 
 ## Known Limitations / Tech Debt
 
-Resolved by `phase-2-square-ordering` and `phase-3-admin-catalog` (kept here
-only so the "as of" history is legible, not as open items): reservation
-capacity enforcement, real webhook signature verification, Server Actions
-existing at all, and `staff_audit_log` having a writer.
+Resolved by `phase-2-square-ordering`, `phase-3-admin-catalog`, and
+`phase-4-staff-surfaces` (kept here only so the "as of" history is legible,
+not as open items): reservation capacity enforcement, real webhook signature
+verification, Server Actions existing at all, `staff_audit_log` having a
+writer, and the staff surfaces (`/staff/today`, `/staff/check-in`,
+`/staff/occupancy`) no longer being placeholders.
 
 Still open, per `docs/vision.md`'s "Scope: Phase 2+":
 
@@ -295,8 +334,18 @@ Still open, per `docs/vision.md`'s "Scope: Phase 2+":
 - **Notification providers are still no-ops** (`createNoopProviders`) — no
   real SES/SMS/Klaviyo integration, and no caller yet enqueues an order or
   booking confirmation onto the outbox at all.
-- **`/staff/occupancy` still renders fake data**.
 - **`/admin/customers` is still a placeholder.**
+- **No check-out on the staff surface** — `reservation_participants` has no
+  `checked_out_at` column; `/staff/occupancy` counts everyone checked in to
+  an occurrence that has not yet ended, so someone who leaves early still
+  counts until their class ends.
+- **No walk-ups from the staff surface** — creating a reservation there would
+  mean a booking-and-payment flow, which is deliberately out of scope; a
+  walk-up still has to be booked through the customer or admin surface first.
+- **No correction path for a mistaken `NO_SHOW`** — `RESERVATION_TRANSITIONS`
+  has no transition out of `NO_SHOW` back to `CONFIRMED`, so marking the
+  wrong reservation as a no-show cannot be undone from the staff surface
+  today.
 
 ## Programs Completed
 
@@ -319,3 +368,12 @@ Still open, per `docs/vision.md`'s "Scope: Phase 2+":
    `admin-catalog.spec.ts`, the Playwright journey proving a manager can
    create and publish a class that a customer can then find and book on
    `/book` (SC-16, SC-07). Built 2026-08-21 (all nine workstreams complete).
+4. `phase-4-staff-surfaces` — the front-of-house staff domain: `staff-ops`
+   (per-participant check-in/undo/no-show commands and today/roster/occupancy
+   queries), `RESERVATION_TRANSITIONS` governing the reservation state
+   machine, `recordAuditEntry`'s move from `catalog-admin` to `database`,
+   `CAFE_TIME_ZONE`'s move from `apps/web` to `contracts`, `/staff/today`,
+   `/staff/check-in`, `/staff/occupancy`, and the FRONT_OF_HOUSE Server Action
+   boundary. Closed with `staff-check-in.spec.ts`, the Playwright journey
+   proving a check-in on `/staff/check-in` is what `/staff/occupancy` counts
+   (SC-17). Built 2026-08-22 → 2026-08-23 (all nine workstreams complete).

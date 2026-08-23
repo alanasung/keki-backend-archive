@@ -18,6 +18,17 @@ import {
   OverlappingOccurrenceError,
   UnsupportedOfferingTypeError,
 } from '@keki/catalog-admin';
+// Aliased: staff-ops declares its own ReservationNotFoundError and
+// InvalidReservationTransitionError, distinct classes from reservation-core's
+// same-named ones (checkout's confirmReservation/cancelReservation vs.
+// WS-03's check-in commands) — an unaliased import would collide, and an
+// `instanceof` check against the wrong class would silently never match.
+import {
+  InvalidReservationTransitionError as StaffInvalidReservationTransitionError,
+  ReservationNotCheckInEligibleError,
+  ReservationNotFoundError as StaffReservationNotFoundError,
+  ReservationParticipantNotFoundError,
+} from '@keki/staff-ops';
 import type { CartParticipantRef } from '@keki/contracts';
 import type { ActionError } from './action-result';
 
@@ -130,6 +141,21 @@ export function toActionError(error: unknown): ActionError {
     error instanceof OccurrenceNotFoundError ||
     error instanceof UnsupportedOfferingTypeError
   ) {
+    return { code: 'VALIDATION', message: error.message };
+  }
+
+  // WS-05's staff check-in actions: each message already names the current
+  // status or both sides of the refused transition, which is what makes the
+  // refusal actionable for a staff member — "this booking is still an
+  // unfinished checkout" rather than "cannot check in".
+  if (
+    error instanceof ReservationNotCheckInEligibleError ||
+    error instanceof StaffInvalidReservationTransitionError
+  ) {
+    return { code: 'CONFLICT', message: error.message };
+  }
+
+  if (error instanceof ReservationParticipantNotFoundError || error instanceof StaffReservationNotFoundError) {
     return { code: 'VALIDATION', message: error.message };
   }
 

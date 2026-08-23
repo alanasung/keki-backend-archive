@@ -30,3 +30,6 @@ export type { StatusBadgeProps, StatusBadgeTone } from './status-badge';
 
 export { FormField } from './form-field';
 export type { FormFieldProps } from './form-field';
+
+export { CountMeter } from './count-meter';
+export type { CountMeterProps } from './count-meter';

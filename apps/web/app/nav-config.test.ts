@@ -87,6 +87,18 @@ const placeholderPageFiles = pageFiles.filter(
     // on an occurrence — built out past the placeholder stage, same as
     // `/admin/schedules` above.
     page.urlPath !== '/admin/reservations' &&
+    // `/staff/today` (WS-06) lists today's occurrences with expected and
+    // arrived counts — built out past the placeholder stage, same as the
+    // admin surfaces above.
+    page.urlPath !== '/staff/today' &&
+    // `/staff/check-in` (WS-07) lists an occurrence's participants with
+    // per-row check-in, undo, and no-show controls — built out past the
+    // placeholder stage, same as `/staff/today` above.
+    page.urlPath !== '/staff/check-in' &&
+    // `/staff/occupancy` (WS-08) reports the current in-building headcount
+    // via `getCurrentOccupancy` — built out past the placeholder stage,
+    // same as `/staff/check-in` above.
+    page.urlPath !== '/staff/occupancy' &&
     !page.urlPath.startsWith('/auth/'),
 );
 const authPageFiles = pageFiles.filter((page) => page.urlPath.startsWith('/auth/'));
@@ -126,15 +138,8 @@ describe('nav-config', () => {
     // `/account` is deliberately absent: it was built out into a read-only
     // household, order-history, passes, and waivers view, so it is asserted
     // with the other non-placeholder surfaces rather than here.
-    const expectedUrlPaths = new Set([
-      '/kiosk/book',
-      '/kiosk/waiver',
-      '/staff/today',
-      '/staff/check-in',
-      '/staff/occupancy',
-      '/admin/customers',
-    ]);
-    expect(placeholderPageFiles).toHaveLength(6);
+    const expectedUrlPaths = new Set(['/kiosk/book', '/kiosk/waiver', '/admin/customers']);
+    expect(placeholderPageFiles).toHaveLength(3);
     expect(new Set(placeholderPageFiles.map((page) => page.urlPath))).toEqual(expectedUrlPaths);
   });
 
@@ -195,6 +200,28 @@ describe('nav-config', () => {
       // boundary as the offerings and schedules pages, with no Server
       // Actions since this surface performs no mutation.
       `admin${sep}reservations${sep}`,
+      // WS-05's staff Server Actions: the same sanctioned data-access
+      // boundary as the top-level `actions/` and `admin/actions/` modules,
+      // established for the staff surface. WS-06 through WS-08 exempt the
+      // staff pages themselves as each is built — this covers only the
+      // actions module.
+      `staff${sep}actions${sep}`,
+      // The today page (WS-06): a read-only Server Component listing today's
+      // occurrences via `listTodaysOccurrences` — the same sanctioned
+      // boundary as the admin pages above, with no Server Actions since this
+      // surface performs no mutation.
+      `staff${sep}today${sep}`,
+      // The check-in page (WS-07): a Server Component listing an
+      // occurrence's roster via `listTodaysOccurrences` and
+      // `listOccurrenceRoster`, plus the client island (roster-row.tsx) that
+      // calls WS-05's staff Server Actions — the same sanctioned boundary as
+      // the offerings and schedules pages.
+      `staff${sep}check-in${sep}`,
+      // The occupancy page (WS-08): a read-only Server Component reporting
+      // the current in-building headcount via `getCurrentOccupancy` — the
+      // same sanctioned boundary as the today and check-in pages, with no
+      // Server Actions since this surface performs no mutation.
+      `staff${sep}occupancy${sep}`,
       `(customer)${sep}book${sep}`,
       `(customer)${sep}cart${sep}`,
       `(customer)${sep}orders${sep}`,

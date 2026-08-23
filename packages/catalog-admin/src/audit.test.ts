@@ -14,7 +14,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 // @keki/database eagerly in a way that matters here since we never load
 // them, only read their text.
 describe('audit coverage', () => {
-  it('every AUDIT_ACTION is emitted by at least one command (test 18)', async () => {
+  it('every offering/occurrence AUDIT_ACTION is emitted by at least one command (test 18)', async () => {
     const { readFileSync } = await import('node:fs');
     const { AUDIT_ACTIONS } = await import('@keki/contracts');
 
@@ -22,7 +22,16 @@ describe('audit coverage', () => {
     const occurrencesSource = readFileSync(new URL('./occurrences.ts', import.meta.url), 'utf-8');
     const combined = `${offeringsSource}\n${occurrencesSource}`;
 
-    for (const action of AUDIT_ACTIONS) {
+    // Scoped to this package's own vocabulary: catalog-admin owns
+    // offering.* and occurrence.* actions, but AUDIT_ACTIONS is a shared
+    // closed set across every staff surface — WS-01 adds reservation.*
+    // actions that a different package (reservation-core) emits, and this
+    // check has no way to see that package's source.
+    const catalogAdminActions = AUDIT_ACTIONS.filter(
+      (action) => action.startsWith('offering.') || action.startsWith('occurrence.'),
+    );
+
+    for (const action of catalogAdminActions) {
       expect(combined).toContain(`'${action}'`);
     }
   });

@@ -199,6 +199,74 @@ describe('auditIntegrationSuites', () => {
       ),
     ).toBe(true);
   });
+
+  // phase-4-staff-surfaces WS-09 spec test 14: naming the staff-ops suites
+  // explicitly means deleting the check-in suite fails CI outright — SC-11's
+  // rollback guarantee and the roll-up-consistency cases are the kind of
+  // thing that's easy to delete when it becomes inconvenient, and impossible
+  // to notice missing without this gate naming it.
+  it('fails when the staff-ops check-in suite is absent entirely', () => {
+    const assertions = passingBaseline().filter(
+      (assertion) => assertion.ancestorTitles[0] !== 'integration: staff-ops check-in',
+    );
+
+    const failures = auditIntegrationSuites(reportWith(assertions));
+
+    expect(
+      failures.some((failure) => failure.includes('integration: staff-ops check-in') && failure.includes('not found')),
+    ).toBe(true);
+  });
+
+  it('fails when the staff-ops queries suite is absent entirely', () => {
+    const assertions = passingBaseline().filter(
+      (assertion) => assertion.ancestorTitles[0] !== 'integration: staff-ops queries',
+    );
+
+    const failures = auditIntegrationSuites(reportWith(assertions));
+
+    expect(
+      failures.some((failure) => failure.includes('integration: staff-ops queries') && failure.includes('not found')),
+    ).toBe(true);
+  });
+
+  // Test 15: passes when both staff-ops suites ran with a non-zero count.
+  it('passes when the staff-ops check-in and queries suites both executed', () => {
+    const failures = auditIntegrationSuites(reportWith(passingBaseline()));
+
+    for (const staffOpsSuite of ['integration: staff-ops check-in', 'integration: staff-ops queries']) {
+      expect(REQUIRED_INTEGRATION_SUITES).toContain(staffOpsSuite);
+      expect(failures.some((failure) => failure.includes(staffOpsSuite))).toBe(false);
+    }
+  });
+
+  // Test 16: the pre-existing zero-executed-tests behavior is unchanged by
+  // adding the staff-ops suites above.
+  it('still fails a zero-count integration suite unrelated to staff-ops', () => {
+    const assertions = passingBaseline().map((assertion) =>
+      assertion.ancestorTitles[0] === 'integration: syncCatalog'
+        ? { ancestorTitles: assertion.ancestorTitles, status: 'skipped' }
+        : assertion,
+    );
+
+    const failures = auditIntegrationSuites(reportWith(assertions));
+
+    expect(
+      failures.some(
+        (failure) => failure.includes('integration: syncCatalog') && failure.includes('zero executed tests'),
+      ),
+    ).toBe(true);
+  });
+
+  // Test 17: this program's additions did not displace the Phase 3 suites.
+  it('still requires the three catalog-admin suites from phase-3-admin-catalog', () => {
+    for (const catalogAdminSuite of [
+      'integration: catalog-admin offerings',
+      'integration: catalog-admin occurrences',
+      'integration: catalog-admin audit',
+    ]) {
+      expect(REQUIRED_INTEGRATION_SUITES).toContain(catalogAdminSuite);
+    }
+  });
 });
 
 // Process-level smoke tests: the unit tests above prove the audit logic is

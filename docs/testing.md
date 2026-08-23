@@ -68,8 +68,10 @@ placeholder routes — SC-04), the authorization gate (`auth.spec.ts`, the full
 journey against a stubbed Square client (`ordering.spec.ts` — SC-15, see
 "Square stubbing and ordering fixtures" below), a real Square sandbox
 payment-to-fulfillment run (`sandbox-fulfillment.spec.ts` — SC-20, see
-"Sandbox payment-to-fulfillment" below), and the admin catalog journey
-(`admin-catalog.spec.ts` — SC-16, SC-07, see "Admin catalog journey" below).
+"Sandbox payment-to-fulfillment" below), the admin catalog journey
+(`admin-catalog.spec.ts` — SC-16, SC-07, see "Admin catalog journey" below),
+and the staff check-in journey (`staff-check-in.spec.ts` — SC-17, see "Staff
+check-in journey" below).
 
 ```sh
 pnpm test:e2e                        # playwright test
@@ -223,6 +225,54 @@ class, there's nothing to safely upsert against), `fixtures/seed.ts` exposes
 starts with the run's prefix, so repeated local runs against a persistent
 (non-CI) branch don't accumulate one throwaway class per run.
 
+### Staff check-in journey (SC-17)
+
+`staff-check-in.spec.ts` is the only spec in the suite signed in as the
+seeded `FRONT_OF_HOUSE` user (`fixtures/seed.ts`'s `TEST_USERS.FRONT_OF_HOUSE`,
+unused anywhere else in the e2e suite until this program). Every other
+`phase-4-staff-surfaces` workstream verifies its own surface in isolation —
+today's schedule query, the check-in command, the occupancy query; this spec
+is the one place that proves a tap on `/staff/check-in` writes a timestamp
+that `/staff/occupancy` reads back, which is this program's whole claim.
+
+The journey runs as one continuous, serially-ordered sequence of tests
+sharing a single `BrowserContext`:
+
+1. Assert the seeded occurrence's `startsAt` falls inside `cafeDayBounds(now)`
+   — the fixture is computed relative to `now` at seed time, not a hardcoded
+   instant, so this guards against it silently stopping being "today".
+2. Visit `/staff/today`; assert the seeded class appears with `0 / 2`
+   arrived.
+3. Follow the card's link to `/staff/check-in`; assert the roster lists both
+   seeded participants by name.
+4. Check in the first participant; assert the row shows a check-in time and
+   an undo control.
+5. Return to `/staff/today`; assert the arrived count is now `1 / 2` — the
+   write actually landing, not merely a UI state change.
+6. Visit `/staff/occupancy`; assert the total headcount is `1`. **This is
+   SC-17**, the assertion the whole program exists to satisfy.
+7. Undo the check-in; assert `/staff/occupancy` drops back to `0`.
+8. Assert `/staff/today` shows `0 / 2` arrived again — the roll-up survives
+   the round trip, not just the increment.
+9. Separately, assert a `CUSTOMER` visiting `/staff/check-in` is redirected
+   to `/auth/unauthorized` — `auth.spec.ts`'s role matrix already covers this
+   route for other roles; this spec adds the `CUSTOMER` case for the one
+   route it exercises, covering the route guard (the action guard is WS-05's
+   own unit tests).
+
+`fixtures/seed.ts`'s `seedStaffCheckInFixtures()` seeds, at fixed ids, an
+occurrence starting shortly before "now" and ending well after it — **in
+progress**, so the occupancy assertion (test 6 above) has something to count
+without an actual wait — with **one reservation holding two participants**,
+not two single-participant reservations. That distinction is deliberate: the
+roll-up staff care about is per participant (arrived vs. expected), not per
+reservation, and checking in only the first of a two-participant booking is
+what actually exercises that the count is per-participant rather than a
+whole reservation flipping from 0 to fully counted at once. The reservation
+and its participants are reset to "nobody arrived" on every seed call, so a
+prior run whose own undo step didn't complete can't leave the fixture already
+checked in.
+
 ### Sandbox payment-to-fulfillment (SC-20)
 
 `sandbox-fulfillment.spec.ts` is the only test in this program that uses the
@@ -332,12 +382,14 @@ needed at job scope: nothing reads them eagerly at module load (unlike
 
 This program's most important guarantees — capacity under concurrency
 (WS-06), schema-level constraints (WS-02), webhook idempotency (WS-10),
-catalog sync (WS-04), and — added by `phase-3-admin-catalog` — the
+catalog sync (WS-04), — added by `phase-3-admin-catalog` — the
 catalog-admin offering commands, occurrence commands, and the
 audit-in-transaction guarantee (see "The audit-in-transaction guarantee"
-below) — live in `describe.skipIf(!hasLiveDatabase)` suites named
-`integration: ...`. A CI run where those silently skip (for example, because
-a future change to the job accidentally stops exporting
+below), and — added by `phase-4-staff-surfaces` — `staff-ops`'s check-in
+(including its own rollback guarantee and roll-up-consistency cases) and
+today/roster/occupancy queries — live in `describe.skipIf(!hasLiveDatabase)`
+suites named `integration: ...`. A CI run where those silently skip (for
+example, because a future change to the job accidentally stops exporting
 `DATABASE_URL_POOLED`/`DATABASE_URL_DIRECT`) is green and meaningless — the
 program's risk register names this failure mode explicitly.
 
@@ -348,7 +400,8 @@ outright, not merely reduce coverage quietly. It currently holds
 `integration: migrations and database-level constraints`,
 `integration: recordPaymentFromWebhook`, `integration: syncCatalog`,
 `integration: catalog-admin offerings`, `integration: catalog-admin
-occurrences`, and `integration: catalog-admin audit`.
+occurrences`, `integration: catalog-admin audit`, `integration: staff-ops
+check-in`, and `integration: staff-ops queries`.
 
 `scripts/assert-integration-tests-ran.ts` parses the Vitest JSON report
 generated in CI step 5 above and fails (non-zero exit) when:

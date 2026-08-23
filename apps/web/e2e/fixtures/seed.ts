@@ -4,7 +4,17 @@
 // `tasks/phase-1-scaffold/WS-12-test-harness-ci.md` step 5), and
 // `@keki/database` is declared as a devDependency of `apps/web` precisely so
 // it cannot reach the production bundle.
-import { catalogItems, children, customers, db, households, occurrences, offerings } from '@keki/database';
+import {
+  catalogItems,
+  children,
+  customers,
+  db,
+  households,
+  occurrences,
+  offerings,
+  reservationParticipants,
+  reservations,
+} from '@keki/database';
 import type { Role } from '@keki/contracts';
 import { eq, like } from 'drizzle-orm';
 
@@ -255,4 +265,197 @@ export async function resetAdminCatalogOfferings(namePrefix: string): Promise<vo
     await db.delete(occurrences).where(eq(occurrences.offeringId, id));
     await db.delete(offerings).where(eq(offerings.id, id));
   }
+}
+
+// ---------------------------------------------------------------------------
+// Staff check-in fixtures (WS-09 SC-17): staff-check-in.spec.ts's journey
+// needs an occurrence starting today, in the cafe's current day, that is
+// already **in progress** — /staff/today's query excludes both yesterday and
+// tomorrow, and an occurrence that hasn't started yet would leave the
+// occupancy assertion (SC-17, the whole point of this program) nothing to
+// count without an actual wait. `startsAt`/`endsAt` are computed relative to
+// `now` at seed time, not a hardcoded instant, or the fixture stops being
+// "today" tomorrow.
+//
+// One reservation with two participants, not two single-participant
+// reservations: checking in the first participant must move the roll-up
+// from 0 to 1 out of 2 while the reservation itself stays a single
+// CONFIRMED/CHECKED_IN booking. A pair of single-participant reservations
+// would produce the same before/after numbers for an entirely different
+// reason (one whole reservation's seat count flipping, not a per-participant
+// count inside one), so it wouldn't actually exercise the roll-up's
+// granularity — see docs/testing.md.
+//
+// Fixed ids, upserted like every other fixture above; the reservation and
+// its participants are explicitly reset to "nobody arrived" on every seed
+// call, since a prior local run whose own undo step didn't run (a failed
+// assertion mid-spec, say) would otherwise leave this fixture already
+// checked in, and the journey's opening "0 arrived" assertion would be
+// testing a lie.
+// ---------------------------------------------------------------------------
+
+export const E2E_STAFF_OFFERING = {
+  id: 'a0000000-0000-4000-8000-000000000020',
+  slug: 'e2e-staff-check-in-class',
+  name: 'E2E Staff Check-in Class',
+  priceCents: 2000,
+  currency: 'USD',
+  durationMinutes: 60,
+  capacity: 20,
+} as const;
+
+export const E2E_STAFF_OCCURRENCE_ID = 'a0000000-0000-4000-8000-000000000021';
+export const E2E_STAFF_RESERVATION_ID = 'a0000000-0000-4000-8000-000000000022';
+export const E2E_STAFF_HOUSEHOLD_ID = 'a0000000-0000-4000-8000-000000000023';
+
+const E2E_STAFF_PARENT = {
+  id: 'a0000000-0000-4000-8000-000000000024',
+  cognitoSub: 'e2e|staff-fixture-parent',
+  email: 'e2e-staff-fixture-parent@example.test',
+} as const;
+
+export const E2E_STAFF_PARTICIPANTS = [
+  {
+    id: 'a0000000-0000-4000-8000-000000000025',
+    childId: 'a0000000-0000-4000-8000-000000000027',
+    firstName: 'Staff-Fixture',
+    lastName: 'Attendee One',
+  },
+  {
+    id: 'a0000000-0000-4000-8000-000000000026',
+    childId: 'a0000000-0000-4000-8000-000000000028',
+    firstName: 'Staff-Fixture',
+    lastName: 'Attendee Two',
+  },
+] as const;
+
+export const E2E_STAFF_PARTICIPANT_NAMES = E2E_STAFF_PARTICIPANTS.map(
+  (participant) => `${participant.firstName} ${participant.lastName}`,
+);
+
+async function seedStaffHouseholdAndParent(): Promise<void> {
+  await db
+    .insert(households)
+    .values({ id: E2E_STAFF_HOUSEHOLD_ID, name: 'E2E Staff Fixture Household' })
+    .onConflictDoUpdate({ target: households.id, set: { name: 'E2E Staff Fixture Household' } });
+
+  await db
+    .insert(customers)
+    .values({
+      id: E2E_STAFF_PARENT.id,
+      householdId: E2E_STAFF_HOUSEHOLD_ID,
+      cognitoSub: E2E_STAFF_PARENT.cognitoSub,
+      email: E2E_STAFF_PARENT.email,
+      firstName: 'Staff-Fixture',
+      lastName: 'Parent',
+    })
+    .onConflictDoUpdate({
+      target: customers.id,
+      set: { householdId: E2E_STAFF_HOUSEHOLD_ID, email: E2E_STAFF_PARENT.email },
+    });
+}
+
+async function seedStaffChildren(): Promise<void> {
+  for (const participant of E2E_STAFF_PARTICIPANTS) {
+    await db
+      .insert(children)
+      .values({
+        id: participant.childId,
+        householdId: E2E_STAFF_HOUSEHOLD_ID,
+        firstName: participant.firstName,
+        lastName: participant.lastName,
+        dateOfBirth: '2017-01-01',
+      })
+      .onConflictDoUpdate({
+        target: children.id,
+        set: { householdId: E2E_STAFF_HOUSEHOLD_ID, firstName: participant.firstName, lastName: participant.lastName },
+      });
+  }
+}
+
+async function seedStaffOfferingAndOccurrence(now: Date): Promise<{ startsAt: Date; endsAt: Date }> {
+  await db
+    .insert(offerings)
+    .values({
+      id: E2E_STAFF_OFFERING.id,
+      slug: E2E_STAFF_OFFERING.slug,
+      name: E2E_STAFF_OFFERING.name,
+      type: 'CLASS',
+      durationMinutes: E2E_STAFF_OFFERING.durationMinutes,
+      defaultCapacity: E2E_STAFF_OFFERING.capacity,
+      priceCents: E2E_STAFF_OFFERING.priceCents,
+      currency: E2E_STAFF_OFFERING.currency,
+      status: 'PUBLISHED',
+    })
+    .onConflictDoUpdate({
+      target: offerings.id,
+      set: { name: E2E_STAFF_OFFERING.name, defaultCapacity: E2E_STAFF_OFFERING.capacity, status: 'PUBLISHED' },
+    });
+
+  // In progress: started shortly before now, ends well after the journey's
+  // read of /staff/occupancy.
+  const startsAt = new Date(now.getTime() - 15 * 60_000);
+  const endsAt = new Date(now.getTime() + 45 * 60_000);
+
+  await db
+    .insert(occurrences)
+    .values({ id: E2E_STAFF_OCCURRENCE_ID, offeringId: E2E_STAFF_OFFERING.id, startsAt, endsAt, status: 'SCHEDULED' })
+    .onConflictDoUpdate({
+      target: occurrences.id,
+      set: { startsAt, endsAt, status: 'SCHEDULED', capacityOverride: null },
+    });
+
+  return { startsAt, endsAt };
+}
+
+async function seedStaffReservationAndParticipants(): Promise<void> {
+  await db
+    .insert(reservations)
+    .values({
+      id: E2E_STAFF_RESERVATION_ID,
+      occurrenceId: E2E_STAFF_OCCURRENCE_ID,
+      householdId: E2E_STAFF_HOUSEHOLD_ID,
+      createdByCustomerId: E2E_STAFF_PARENT.id,
+      status: 'CONFIRMED',
+      seatCount: E2E_STAFF_PARTICIPANTS.length,
+    })
+    .onConflictDoUpdate({
+      target: reservations.id,
+      set: {
+        occurrenceId: E2E_STAFF_OCCURRENCE_ID,
+        householdId: E2E_STAFF_HOUSEHOLD_ID,
+        status: 'CONFIRMED',
+        seatCount: E2E_STAFF_PARTICIPANTS.length,
+      },
+    });
+
+  for (const participant of E2E_STAFF_PARTICIPANTS) {
+    await db
+      .insert(reservationParticipants)
+      .values({
+        id: participant.id,
+        reservationId: E2E_STAFF_RESERVATION_ID,
+        childId: participant.childId,
+        checkedInAt: null,
+      })
+      .onConflictDoUpdate({
+        target: reservationParticipants.id,
+        set: { reservationId: E2E_STAFF_RESERVATION_ID, childId: participant.childId, checkedInAt: null },
+      });
+  }
+}
+
+/**
+ * Idempotent: safe to call at the top of `staff-check-in.spec.ts` on every
+ * run against a reused local branch. Returns the seeded occurrence's
+ * `startsAt`/`endsAt` so the spec can assert it against
+ * `cafeDayBounds(now)` itself, rather than trusting this function's own
+ * arithmetic.
+ */
+export async function seedStaffCheckInFixtures(now: Date): Promise<{ startsAt: Date; endsAt: Date }> {
+  await seedStaffHouseholdAndParent();
+  await seedStaffChildren();
+  const occurrence = await seedStaffOfferingAndOccurrence(now);
+  await seedStaffReservationAndParticipants();
+  return occurrence;
 }

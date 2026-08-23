@@ -1,0 +1,279 @@
+{
+  "program": {
+    "id": "phase-4-staff-surfaces",
+    "name": "Phase 4 Staff Surfaces",
+    "description": "The front-of-house surface for the day a class runs: today's schedule, per-participant check-in, and who is currently in the building. CHECKED_IN has been a reservation status since Phase 1 that no code could ever reach, and reservation_participants.checked_in_at has never been set.",
+    "status": "complete",
+    "created": "2026-08-22"
+  },
+  "technology": {
+    "newTechnology": "None — uses the existing stack",
+    "checkInGranularity": "Per participant via reservation_participants.checked_in_at; the reservation's CHECKED_IN status is a roll-up derived from it, never an independent source of truth",
+    "undoCheckIn": "Permitted; clears the timestamp and reverts the roll-up when no participant remains checked in",
+    "walkUps": "Out of scope — creating a reservation from the staff surface means a booking and payment flow",
+    "occupancyFreshness": "As of page load with an explicit refresh; no polling or streaming",
+    "checkOut": "No checked_out_at column; occupancy is scoped to in-progress occurrences and self-clears when a class ends",
+    "noShow": "Permitted, and it releases the seat — NO_SHOW is not seat-consuming under the capacity trigger",
+    "statusTransitions": "RESERVATION_TRANSITIONS in contracts, mirroring OFFERING_TRANSITIONS and ORDER_TRANSITIONS",
+    "auditTrail": "recordAuditEntry moves from catalog-admin to packages/database so staff code need not depend on catalog-admin; still written inside each mutation's transaction",
+    "timeZone": "CAFE_TIME_ZONE moves from apps/web to contracts so a domain package can compute today's boundaries",
+    "mutationSurface": "Server Actions gated on FRONT_OF_HOUSE via authenticatedAction"
+  },
+  "successCriteria": [
+    {
+      "id": "SC-01",
+      "description": "/staff/today lists today's occurrences with start time, class name, and expected-versus-arrived counts."
+    },
+    {
+      "id": "SC-02",
+      "description": "\"Today\" is computed in the cafe's timezone, not the server's, and not as a rolling 24 hours."
+    },
+    {
+      "id": "SC-03",
+      "description": "Staff can check in an individual participant, setting reservation_participants.checked_in_at."
+    },
+    {
+      "id": "SC-04",
+      "description": "Checking in the first participant of a reservation moves it CONFIRMED to CHECKED_IN."
+    },
+    {
+      "id": "SC-05",
+      "description": "Undoing a check-in clears the timestamp, and the reservation returns to CONFIRMED only when no participant remains checked in."
+    },
+    {
+      "id": "SC-06",
+      "description": "Check-in is idempotent: repeating it preserves the original checked_in_at and writes no second audit row."
+    },
+    {
+      "id": "SC-07",
+      "description": "Checking in a HELD reservation is refused with a message naming why."
+    },
+    {
+      "id": "SC-08",
+      "description": "Staff can mark a reservation NO_SHOW, and its seats are released."
+    },
+    {
+      "id": "SC-09",
+      "description": "An undeclared reservation transition is refused by RESERVATION_TRANSITIONS."
+    },
+    {
+      "id": "SC-10",
+      "description": "Every staff mutation writes a staff_audit_log row naming the actor, action, and entity."
+    },
+    {
+      "id": "SC-11",
+      "description": "An audit entry never survives a staff mutation that rolled back."
+    },
+    {
+      "id": "SC-12",
+      "description": "Phase 3's audit suite still passes after recordAuditEntry moves to packages/database, with its rolled-back-mutation cases unchanged; the only permitted edit is scoping the audit-coverage scan to the offering/occurrence action prefixes WS-01's new reservation actions fall outside."
+    },
+    {
+      "id": "SC-13",
+      "description": "Every staff action rejects a caller whose role is below FRONT_OF_HOUSE."
+    },
+    {
+      "id": "SC-14",
+      "description": "/staff/check-in lists an occurrence's participants by name with their check-in state and a control for each."
+    },
+    {
+      "id": "SC-15",
+      "description": "/staff/occupancy reports checked-in participants of in-progress occurrences, excludes occurrences that have ended, and states its as-of time."
+    },
+    {
+      "id": "SC-16",
+      "description": "Checking a participant in does not change the occurrence's seat count, since CONFIRMED and CHECKED_IN both consume a seat."
+    },
+    {
+      "id": "SC-17",
+      "description": "Playwright covers a staff journey: view today, check a participant in, and see occupancy reflect them."
+    }
+  ],
+  "packages": [
+    {
+      "name": "staff-ops",
+      "path": "packages/staff-ops",
+      "description": "NEW. Front-of-house write paths (participant check-in, undo, no-show) and staff read paths (today's schedule, occurrence roster, current occupancy), each mutation recording a staff_audit_log entry in its own transaction. Separate from reservation-core, which the customer checkout path imports — a package-boundaries test asserts the customer surface never imports this one."
+    },
+    {
+      "name": "contracts",
+      "path": "packages/contracts",
+      "description": "Gains RESERVATION_TRANSITIONS and canTransitionReservation, check-in input schemas, staff AUDIT_ACTIONS members, and CAFE_TIME_ZONE relocated from apps/web."
+    },
+    {
+      "name": "database",
+      "path": "packages/database",
+      "description": "Receives recordAuditEntry and changedFields from catalog-admin — a single-table insert taking a transaction handle belongs with withTransaction, and both catalog-admin and staff-ops depend on database already."
+    },
+    {
+      "name": "catalog-admin",
+      "path": "packages/catalog-admin",
+      "description": "Re-exports the relocated recordAuditEntry so no caller breaks; its Phase 3 audit suite must pass unmodified as proof the move was faithful."
+    },
+    {
+      "name": "auth",
+      "path": "packages/auth",
+      "description": "Unchanged; the FRONT_OF_HOUSE role and authorize predicate already exist and are reused."
+    },
+    {
+      "name": "web",
+      "path": "apps/web",
+      "description": "The three staff surfaces and their Server Actions: /staff/today, /staff/check-in, /staff/occupancy, replacing PlaceholderPanel."
+    },
+    {
+      "name": "ui",
+      "path": "packages/ui",
+      "description": "Presentational additions for the staff surfaces, reusing StatusBadge and EmptyState from Phase 3."
+    }
+  ],
+  "workstreams": [
+    {
+      "id": "WS-01",
+      "name": "Contracts: reservation transitions, check-in schemas, staff audit actions, CAFE_TIME_ZONE",
+      "taskFile": "tasks/phase-4-staff-surfaces/WS-01-contracts-staff-types.md",
+      "status": "complete",
+      "size": "S",
+      "dependencies": [],
+      "packages": [
+        "contracts",
+        "web"
+      ]
+    },
+    {
+      "id": "WS-02",
+      "name": "Move recordAuditEntry from catalog-admin to packages/database",
+      "taskFile": "tasks/phase-4-staff-surfaces/WS-02-audit-extraction.md",
+      "status": "complete",
+      "size": "S",
+      "dependencies": [],
+      "packages": [
+        "database",
+        "catalog-admin",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-03",
+      "name": "staff-ops: check-in, undo, and no-show commands",
+      "taskFile": "tasks/phase-4-staff-surfaces/WS-03-check-in-commands.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-01",
+        "WS-02"
+      ],
+      "packages": [
+        "staff-ops",
+        "contracts",
+        "database"
+      ]
+    },
+    {
+      "id": "WS-04",
+      "name": "staff-ops: today's schedule, roster, and occupancy queries",
+      "taskFile": "tasks/phase-4-staff-surfaces/WS-04-staff-queries.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-01"
+      ],
+      "packages": [
+        "staff-ops",
+        "contracts",
+        "database"
+      ]
+    },
+    {
+      "id": "WS-05",
+      "name": "Staff Server Actions with the FRONT_OF_HOUSE boundary",
+      "taskFile": "tasks/phase-4-staff-surfaces/WS-05-staff-actions.md",
+      "status": "complete",
+      "size": "S",
+      "dependencies": [
+        "WS-03",
+        "WS-04"
+      ],
+      "packages": [
+        "web",
+        "auth",
+        "staff-ops",
+        "contracts"
+      ]
+    },
+    {
+      "id": "WS-06",
+      "name": "/staff/today: today's occurrences with expected and arrived counts",
+      "taskFile": "tasks/phase-4-staff-surfaces/WS-06-today-surface.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-05"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "staff-ops"
+      ]
+    },
+    {
+      "id": "WS-07",
+      "name": "/staff/check-in: per-participant check-in for an occurrence",
+      "taskFile": "tasks/phase-4-staff-surfaces/WS-07-check-in-surface.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-05"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "staff-ops"
+      ]
+    },
+    {
+      "id": "WS-08",
+      "name": "/staff/occupancy: who is in the building now",
+      "taskFile": "tasks/phase-4-staff-surfaces/WS-08-occupancy-surface.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-04"
+      ],
+      "packages": [
+        "web",
+        "ui",
+        "staff-ops"
+      ]
+    },
+    {
+      "id": "WS-09",
+      "name": "Tests, e2e coverage, and documentation",
+      "taskFile": "tasks/phase-4-staff-surfaces/WS-09-tests-and-docs.md",
+      "status": "complete",
+      "size": "M",
+      "dependencies": [
+        "WS-06",
+        "WS-07",
+        "WS-08"
+      ],
+      "packages": [
+        "web",
+        "staff-ops"
+      ]
+    }
+  ],
+  "outOfScope": [
+    "Walk-up bookings, or creating any reservation from the staff surface",
+    "Check-out, and any checked_out_at column",
+    "Real-time or polled occupancy",
+    "Editing or moving a reservation, and changing seat counts",
+    "Refunds, and any dependency on refundPayment",
+    "Waiver capture at check-in — waiver_record_id stays untouched",
+    "Play passes and redemption at check-in",
+    "/kiosk/book and /kiosk/waiver, which stay placeholders",
+    "/admin/customers, which stays a placeholder",
+    "An audit-log viewer — this program writes entries, it does not display them",
+    "Notification sends on check-in",
+    "Historical attendance reporting"
+  ]
+}

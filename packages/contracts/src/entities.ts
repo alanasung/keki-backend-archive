@@ -23,6 +23,18 @@ import type {
 // WS-03 can reuse the tuples directly as Postgres enum values.
 // ---------------------------------------------------------------------------
 
+// Occurrence times render in the cafe's timezone — `occurrences.starts_at`
+// is stored as `timestamptz` specifically so a class scheduled across a DST
+// boundary still shows the right local hour (see
+// packages/database/src/schema/catalog.ts). Rendering in the server's zone
+// or in UTC would show customers the wrong time twice a year, so every
+// formatter that renders an occurrence is pinned to this single named
+// constant. Domain packages compute the cafe's day boundaries from it too —
+// WS-04's "today's schedule" query groups by this zone, not the server's.
+// Exported so /book and /admin/schedules render the same class at the same
+// local hour instead of each declaring a constant that could drift.
+export const CAFE_TIME_ZONE = 'America/Los_Angeles';
+
 export const OFFERING_TYPES = ['CLASS', 'ROOM', 'OPEN_PLAY'] as const;
 export type OfferingType = (typeof OFFERING_TYPES)[number];
 

@@ -19,10 +19,8 @@
     "workspace": "test -f pnpm-workspace.yaml && test -f package.json",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "test": "pnpm test",
     "build": "pnpm -r build",
-    "integration": "pnpm test:integration-audit",
-    "e2e": "pnpm test:e2e"
+    "test": "pnpm test:integration-audit"
   },
   "contextDocs": [
     "docs/vision.md",

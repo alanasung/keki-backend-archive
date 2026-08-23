@@ -95,10 +95,21 @@ export const AUDIT_ACTIONS = [
   'occurrence.scheduled',
   'occurrence.updated',
   'occurrence.cancelled',
+  // Appended for WS-01 staff surfaces — do not reorder. AUDIT_ACTIONS is a
+  // closed set whose values are already persisted in staff_audit_log rows;
+  // reordering wouldn't break anything today but invites treating position
+  // as meaningful.
+  'reservation.checked_in',
+  'reservation.check_in_undone',
+  'reservation.no_show',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-export const AUDIT_ENTITY_TYPES = ['offering', 'occurrence'] as const;
+// 'reservation' is the entity type even though check-in marks a participant
+// row: the entity a reader cares about is the booking, and entityId carries
+// the reservation id so an auditor can find it. The participant is recorded
+// in the AuditEntry's `after` payload instead.
+export const AUDIT_ENTITY_TYPES = ['offering', 'occurrence', 'reservation'] as const;
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
 
 export interface AuditEntry {

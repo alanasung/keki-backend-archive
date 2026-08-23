@@ -32,6 +32,7 @@ const nodeProjects: Record<string, string> = {
   '@keki/pass-core': 'packages/pass-core',
   '@keki/reservation-core': 'packages/reservation-core',
   '@keki/square-client': 'packages/square-client',
+  '@keki/staff-ops': 'packages/staff-ops',
   '@keki/infra': 'infra',
   '@keki/notification-worker': 'functions/notification-worker',
   '@keki/reconciliation-worker': 'functions/reconciliation-worker',

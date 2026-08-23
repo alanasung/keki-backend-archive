@@ -85,7 +85,7 @@ describe('AdminSchedulesPage', () => {
     const filePath = fileURLToPath(new NodeURL('./page.tsx', import.meta.url));
     const source = readFileSync(filePath, 'utf-8');
 
-    expect(source).toMatch(/import\s*\{\s*CAFE_TIME_ZONE\s*\}\s*from\s*['"]\.\.\/\.\.\/\(customer\)\/book\/class-listing['"]/);
+    expect(source).toMatch(/import\s*\{[^}]*CAFE_TIME_ZONE[^}]*\}\s*from\s*['"]@keki\/contracts['"]/);
     expect(source).not.toMatch(/CAFE_TIME_ZONE\s*=\s*['"]/);
   });
 

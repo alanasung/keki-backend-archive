@@ -5,6 +5,7 @@ export * from './admin';
 export * from './catalog';
 export * from './orders';
 export * from './ports';
+export * from './staff';
 export * from './errors';
 export * from './integrations';
 export * from './messages';

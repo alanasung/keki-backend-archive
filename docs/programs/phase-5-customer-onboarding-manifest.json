@@ -1,0 +1,221 @@
+{
+  "program": {
+    "id": "phase-5-customer-onboarding",
+    "name": "Phase 5 Customer Onboarding",
+    "description": "Let a real person use Keki: the Cognito hosted-UI sign-in handshake the infrastructure was provisioned for in Phase 1 and never used, first-time profile completion, and a parent's ability to add their own children. /auth/sign-in has said \"arrives in Phase 2\" through three shipped phases, and addChild has been a stub since Phase 1 in a product that sells classes for children.",
+    "status": "planning",
+    "created": "2026-08-23"
+  },
+  "technology": {
+    "newTechnology": "None — uses the existing stack",
+    "oauthFlow": "Authorization code with PKCE against the Cognito hosted UI; public client with no secret, since the browser initiates the redirect",
+    "sessionLifetime": "Refresh token in its own httpOnly cookie, exchanged near id-token expiry — a one-hour hard session drops customers mid-checkout",
+    "socialLogin": "Out of scope; each provider is its own configuration, consent screen, and account-linking problem",
+    "profileCompletion": "A dedicated /auth/complete-profile step rather than silent provisioning on callback, because provisionCustomerProfile needs a real name",
+    "childDateOfBirth": "Required — children.date_of_birth is notNull and age decides which class a child belongs in",
+    "adminCustomers": "Read-only lookup; staff editing a household is a larger second question",
+    "demoSignIn": "Retained. Every demo has gone through it, it is double-gated, and the e2e fixtures do not use Cognito either",
+    "cookieContract": "The id-token cookie name and shape must not change — the existing Playwright session fixtures set the same cookie"
+  },
+  "successCriteria": [
+    {
+      "id": "SC-01",
+      "description": "/auth/sign-in redirects to the Cognito hosted UI with a correctly-formed authorization URL carrying client_id, redirect_uri, code_challenge, and state."
+    },
+    {
+      "id": "SC-02",
+      "description": "The PKCE verifier and state are stored in httpOnly cookies that survive the redirect round trip."
+    },
+    {
+      "id": "SC-03",
+      "description": "/auth/callback exchanges an authorization code for tokens and sets the id-token cookie under its existing name and shape."
+    },
+    {
+      "id": "SC-04",
+      "description": "A callback whose state does not match the cookie is refused before any token exchange."
+    },
+    {
+      "id": "SC-05",
+      "description": "After callback, the user is returned to the next path they were originally denied."
+    },
+    {
+      "id": "SC-06",
+      "description": "A session whose id token is near expiry is refreshed without the user signing in again."
+    },
+    {
+      "id": "SC-07",
+      "description": "/auth/sign-out clears the session cookies and redirects through Cognito's logout endpoint."
+    },
+    {
+      "id": "SC-08",
+      "description": "A signed-in user with no customers row is sent to /auth/complete-profile."
+    },
+    {
+      "id": "SC-09",
+      "description": "Completing the profile creates the customer and household, and returns the user to where they were going."
+    },
+    {
+      "id": "SC-10",
+      "description": "Profile completion is idempotent: submitting twice does not create a second household."
+    },
+    {
+      "id": "SC-11",
+      "description": "A customer can add a child with a first name, last name, and date of birth."
+    },
+    {
+      "id": "SC-12",
+      "description": "A child is always added to the caller's own household, never one supplied in the payload."
+    },
+    {
+      "id": "SC-13",
+      "description": "A future date of birth is refused."
+    },
+    {
+      "id": "SC-14",
+      "description": "A customer can rename their household."
+    },
+    {
+      "id": "SC-15",
+      "description": "A newly added child appears as a bookable participant on the class booking flow."
+    },
+    {
+      "id": "SC-16",
+      "description": "/admin/customers finds a household by customer email or name and shows its members, children, and recent orders."
+    },
+    {
+      "id": "SC-17",
+      "description": "The existing Playwright session fixtures still work unchanged — the cookie contract did not move."
+    },
+    {
+      "id": "SC-18",
+      "description": "Playwright covers the journey: complete a profile, add a child, and book that child into a class."
+    }
+  ],
+  "packages": [
+    {
+      "name": "auth",
+      "path": "packages/auth",
+      "description": "Gains the OAuth handshake: buildAuthorizationUrl, exchangeCodeForTokens, refreshSession, buildSignOutUrl, and PKCE challenge generation. Stays a library with no Next.js imports so the kiosk surface can reuse it."
+    },
+    {
+      "name": "contracts",
+      "path": "packages/contracts",
+      "description": "Input schemas for profile completion, addChild, and household rename, plus the OAuth handshake types (authorization request, token response, state/verifier pair)."
+    },
+    {
+      "name": "customer-core",
+      "path": "packages/customer-core",
+      "description": "addChild and updateHousehold stop rejecting with NotImplementedInPhase1 — its first write paths since Phase 1."
+    },
+    {
+      "name": "infra",
+      "path": "infra",
+      "description": "The Cognito client gains authorization-code flow with PKCE, per-stage callback and logout URLs, and openid/email/profile scopes. The hosted-UI domain, provisioned in Phase 1 and never consumed, becomes an output the app uses."
+    },
+    {
+      "name": "web",
+      "path": "apps/web",
+      "description": "/auth/sign-in, /auth/callback, /auth/sign-out, /auth/complete-profile, an editable /account, and /admin/customers — the last admin placeholder."
+    },
+    {
+      "name": "ui",
+      "path": "packages/ui",
+      "description": "Presentational additions for the profile and child forms, reusing FormField and EmptyState."
+    }
+  ],
+  "workstreams": [
+    {
+      "id": "WS-01",
+      "name": "Contracts: profile, child, and household schemas; OAuth handshake types",
+      "taskFile": "tasks/phase-5-customer-onboarding/WS-01-contracts-onboarding-types.md",
+      "status": "not_started",
+      "size": "S",
+      "dependencies": [],
+      "packages": ["contracts"]
+    },
+    {
+      "id": "WS-02",
+      "name": "Infrastructure: Cognito OAuth client configuration and hosted-UI outputs",
+      "taskFile": "tasks/phase-5-customer-onboarding/WS-02-cognito-oauth-infra.md",
+      "status": "not_started",
+      "size": "S",
+      "dependencies": [],
+      "packages": ["infra"]
+    },
+    {
+      "id": "WS-03",
+      "name": "@keki/auth: authorization URL, code exchange, refresh, sign-out",
+      "taskFile": "tasks/phase-5-customer-onboarding/WS-03-auth-handshake.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": ["WS-01", "WS-02"],
+      "packages": ["auth", "contracts"]
+    },
+    {
+      "id": "WS-04",
+      "name": "/auth/sign-in, /auth/callback, and /auth/sign-out routes",
+      "taskFile": "tasks/phase-5-customer-onboarding/WS-04-auth-routes.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": ["WS-03"],
+      "packages": ["web", "auth"]
+    },
+    {
+      "id": "WS-05",
+      "name": "/auth/complete-profile: first-time profile provisioning",
+      "taskFile": "tasks/phase-5-customer-onboarding/WS-05-complete-profile.md",
+      "status": "not_started",
+      "size": "S",
+      "dependencies": ["WS-01", "WS-04"],
+      "packages": ["web", "ui", "customer-core"]
+    },
+    {
+      "id": "WS-06",
+      "name": "customer-core: real addChild and updateHousehold",
+      "taskFile": "tasks/phase-5-customer-onboarding/WS-06-customer-write-paths.md",
+      "status": "not_started",
+      "size": "S",
+      "dependencies": ["WS-01"],
+      "packages": ["customer-core", "contracts"]
+    },
+    {
+      "id": "WS-07",
+      "name": "/account: add a child and rename the household",
+      "taskFile": "tasks/phase-5-customer-onboarding/WS-07-account-surface.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": ["WS-06"],
+      "packages": ["web", "ui", "customer-core"]
+    },
+    {
+      "id": "WS-08",
+      "name": "/admin/customers: staff customer lookup",
+      "taskFile": "tasks/phase-5-customer-onboarding/WS-08-admin-customers.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": ["WS-01"],
+      "packages": ["web", "ui", "customer-core"]
+    },
+    {
+      "id": "WS-09",
+      "name": "Tests, e2e coverage, and documentation",
+      "taskFile": "tasks/phase-5-customer-onboarding/WS-09-tests-and-docs.md",
+      "status": "not_started",
+      "size": "M",
+      "dependencies": ["WS-04", "WS-05", "WS-07", "WS-08"],
+      "packages": ["web", "auth"]
+    }
+  ],
+  "outOfScope": [
+    "Social login, and any external identity provider",
+    "MFA, and customizing Cognito's password-reset or email-verification screens",
+    "Editing or deleting a child once added",
+    "Staff editing a household from /admin/customers",
+    "Merging or transferring households",
+    "Removing the demo sign-in route",
+    "Waivers, play passes, and refunds — still stubs, still out",
+    "/kiosk/book and /kiosk/waiver, which stay placeholders",
+    "Account deletion, data export, and other privacy-request tooling",
+    "Email change, which is an identity change and belongs with account recovery"
+  ]
+}

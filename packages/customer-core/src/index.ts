@@ -1,3 +1,3 @@
-export { getCustomerById, getHouseholdById, listHouseholdMembers } from './queries';
+export { getCustomerById, getHouseholdById, getHouseholdName, listHouseholdMembers } from './queries';
 export { addChild, provisionCustomerProfile, startWaiverSigning, updateHousehold } from './commands';
 export { HouseholdNotFoundError, InvalidDateOfBirthError } from './errors';

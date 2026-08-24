@@ -210,7 +210,7 @@
       "id": "WS-07",
       "name": "/account: add a child and rename the household",
       "taskFile": "tasks/phase-5-customer-onboarding/WS-07-account-surface.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-06"

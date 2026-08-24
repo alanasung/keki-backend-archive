@@ -1,20 +1,25 @@
 import Link from 'next/link';
 import { listOrdersForHousehold } from '@keki/commerce-core';
-import { listHouseholdMembers } from '@keki/customer-core';
+import { getHouseholdName, listHouseholdMembers } from '@keki/customer-core';
 import type { Order, OrderStatus } from '@keki/contracts';
-import { PageShell, Price } from '@keki/ui';
+import { EmptyState, PageShell, Price } from '@keki/ui';
 import { requireRole } from '../../auth/guards';
+import { AddChildForm } from './add-child-form';
+import { HouseholdNameForm } from './household-name-form';
 
 // Household membership and order state both change outside this page's
 // control — a cached copy would show a stale order status right after
 // checkout, which is exactly when a customer looks.
 export const dynamic = 'force-dynamic';
 
-// Read-only by design. Editing a household, adding a child, buying or
-// spending a play pass, and signing a waiver all rest on domain commands
-// that still reject with NotImplementedInPhase1 (customer-core's addChild
-// and updateHousehold, every command in pass-core, startWaiverSigning), so
-// those sections state that plainly rather than rendering controls that
+// A parent can add a child and rename their household — see
+// add-child-form.tsx and household-name-form.tsx. Editing or removing an
+// existing household member is deliberately out of scope (WS-07): what
+// happens to a child already booked into a class is a question this
+// program does not yet answer. Buying or spending a play pass, and signing
+// a waiver, still rest on domain commands that reject with
+// NotImplementedInPhase1 (every command in pass-core, startWaiverSigning),
+// so those sections state that plainly rather than rendering controls that
 // cannot work.
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
@@ -108,14 +113,18 @@ export default async function AccountPage() {
     );
   }
 
-  // Deliberately not calling getHouseholdById: it throws when
-  // `primary_customer_id` is null, and that column is nullable — the
-  // `Household` contract type declares it non-null, so any household without
-  // one (every seeded household, for instance) takes the whole page down.
-  // Nothing here needs the household row itself.
-  const [members, orders] = await Promise.all([
+  // Deliberately not calling getHouseholdById for the members/orders below:
+  // it throws when `primary_customer_id` is null, and that column is
+  // nullable — the `Household` contract type declares it non-null, so any
+  // household without one (every seeded household, for instance) takes the
+  // whole page down. Neither query below needs the household row itself.
+  // The rename form does need the household's current name, so it uses
+  // getHouseholdName instead — a narrower query that only selects `name`
+  // and never touches that invariant.
+  const [members, orders, householdName] = await Promise.all([
     listHouseholdMembers(householdId),
     listOrdersForHousehold(householdId),
+    getHouseholdName(householdId),
   ]);
 
   // Newest first: an account page is read to check something recent.
@@ -128,6 +137,8 @@ export default async function AccountPage() {
     >
       <div className="flex max-w-2xl flex-col gap-8">
         <Section title="Household">
+          <HouseholdNameForm currentName={householdName ?? ''} />
+
           <ul className="flex flex-col gap-2">
             {members.customers.map((customer) => (
               <li
@@ -164,9 +175,19 @@ export default async function AccountPage() {
               </li>
             ))}
           </ul>
+
+          {members.children.length === 0 && (
+            <EmptyState
+              title="Add your first child"
+              description="Adding a child is how you book a class for them."
+            />
+          )}
+
           <p className="text-xs text-surface-500">
-            Adding or editing household members is not available yet.
+            Editing or removing a household member is not available yet.
           </p>
+
+          <AddChildForm />
         </Section>
 
         <Section title="Orders">

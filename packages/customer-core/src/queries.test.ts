@@ -46,7 +46,7 @@ vi.mock('drizzle-orm', () => ({
   eq: vi.fn((column: unknown, value: unknown) => ({ column, value })),
 }));
 
-import { getCustomerById, getHouseholdById, listHouseholdMembers } from './queries';
+import { getCustomerById, getHouseholdById, getHouseholdName, listHouseholdMembers } from './queries';
 
 const CUSTOMER_ROW = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -62,6 +62,7 @@ const CUSTOMER_ROW = {
 
 const HOUSEHOLD_ROW = {
   id: '22222222-2222-4222-8222-222222222222',
+  name: 'Lovelace Household',
   primaryCustomerId: CUSTOMER_ROW.id,
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-01-01T00:00:00Z'),
@@ -113,6 +114,35 @@ describe('getHouseholdById', () => {
 
     expect(result?.id).toBe(HOUSEHOLD_ROW.id);
     expect(result?.primaryCustomerId).toBe(HOUSEHOLD_ROW.primaryCustomerId);
+  });
+});
+
+describe('getHouseholdName', () => {
+  it('returns null for an unknown id', async () => {
+    mockRowsByTable.set(HOUSEHOLDS, []);
+
+    const result = await getHouseholdName(createHouseholdId(HOUSEHOLD_ROW.id));
+
+    expect(result).toBeNull();
+  });
+
+  it('returns the household name, not the full row', async () => {
+    mockRowsByTable.set(HOUSEHOLDS, [HOUSEHOLD_ROW]);
+
+    const result = await getHouseholdName(createHouseholdId(HOUSEHOLD_ROW.id));
+
+    expect(result).toBe(HOUSEHOLD_ROW.name);
+  });
+
+  // A household mid-provisioning (primary_customer_id still null) has a
+  // name from the moment it's created — see provisionCustomerProfile —
+  // so unlike getHouseholdById this never throws on that state.
+  it('does not throw when primaryCustomerId is null', async () => {
+    mockRowsByTable.set(HOUSEHOLDS, [{ ...HOUSEHOLD_ROW, primaryCustomerId: null }]);
+
+    const result = await getHouseholdName(createHouseholdId(HOUSEHOLD_ROW.id));
+
+    expect(result).toBe(HOUSEHOLD_ROW.name);
   });
 });
 

@@ -95,6 +95,16 @@ export async function getHouseholdById(id: HouseholdId): Promise<Household | nul
   return row === undefined ? null : toHousehold(row);
 }
 
+// A narrower sibling to getHouseholdById, for the one case (WS-07's rename
+// form) that only ever needed the name: getHouseholdById maps to the
+// `Household` contract type, which both omits `name` and throws when
+// `primary_customer_id` is null — a real state for any household that
+// hasn't finished provisioning. Selecting only `name` sidesteps both.
+export async function getHouseholdName(id: HouseholdId): Promise<string | null> {
+  const rows = await db.select({ name: households.name }).from(households).where(eq(households.id, id)).limit(1);
+  return rows[0]?.name ?? null;
+}
+
 export async function listHouseholdMembers(
   householdId: HouseholdId,
 ): Promise<{ customers: readonly Customer[]; children: readonly Child[] }> {

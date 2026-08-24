@@ -5,6 +5,7 @@ import {
   OccurrenceNotBookableError,
   ParticipantNotInHouseholdError,
 } from '@keki/commerce-core';
+import { HouseholdNotFoundError, InvalidDateOfBirthError } from '@keki/customer-core';
 import { CapacityExceededError, InvalidReservationTransitionError } from '@keki/reservation-core';
 import { SquareApiError } from '@keki/square-client';
 import {
@@ -69,6 +70,19 @@ export class StaleCartParticipantError extends Error {
 }
 
 /**
+ * Thrown by account-actions.ts (WS-07) when `session.profile.householdId`
+ * is null. The profile type allows this even though a provisioned customer
+ * always has a household, so this turns that gap into a handled VALIDATION
+ * result instead of an assertion that could crash the action.
+ */
+export class MissingHouseholdError extends Error {
+  constructor() {
+    super('Your account is not linked to a household yet.');
+    this.name = 'MissingHouseholdError';
+  }
+}
+
+/**
  * Translates a thrown domain error into a customer-safe envelope. Never put
  * an unrecognized error's message into the envelope: an unmapped error can
  * carry a connection string or a raw Square error body, and the envelope
@@ -81,6 +95,21 @@ export function toActionError(error: unknown): ActionError {
 
   if (error instanceof StaleCartParticipantError) {
     return { code: 'CONFLICT', message: error.message };
+  }
+
+  if (error instanceof MissingHouseholdError) {
+    return { code: 'VALIDATION', message: error.message };
+  }
+
+  // WS-07's account-actions.ts (addChildAction, updateHouseholdNameAction):
+  // both messages already name the constraint that was violated ("cannot be
+  // in the future", the missing household id) rather than a generic refusal.
+  if (error instanceof InvalidDateOfBirthError) {
+    return { code: 'VALIDATION', message: error.message };
+  }
+
+  if (error instanceof HouseholdNotFoundError) {
+    return { code: 'VALIDATION', message: error.message };
   }
 
   if (error instanceof CapacityExceededError) {

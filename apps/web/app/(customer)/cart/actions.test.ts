@@ -38,7 +38,14 @@ const { cartStore, mockAuthorize, mockGetSessionResult, mockListHouseholdMembers
 
 vi.mock('@keki/auth', () => ({ authorize: mockAuthorize }));
 vi.mock('../../auth/require-session', () => ({ getSessionResult: mockGetSessionResult }));
-vi.mock('@keki/customer-core', () => ({ listHouseholdMembers: mockListHouseholdMembers }));
+// Partial mock: errors.ts (WS-07) instanceof-checks real customer-core
+// error classes on every thrown error, including ParticipantNotInHouseholdError
+// here, so those classes must stay real even though listHouseholdMembers is
+// replaced with a controllable fixture.
+vi.mock('@keki/customer-core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@keki/customer-core')>();
+  return { ...actual, listHouseholdMembers: mockListHouseholdMembers };
+});
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
 vi.mock('./cart-cookie', () => ({

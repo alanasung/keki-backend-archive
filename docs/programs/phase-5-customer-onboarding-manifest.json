@@ -179,7 +179,7 @@
       "id": "WS-05",
       "name": "/auth/complete-profile: first-time profile provisioning",
       "taskFile": "tasks/phase-5-customer-onboarding/WS-05-complete-profile.md",
-      "status": "not_started",
+      "status": "in_progress",
       "size": "S",
       "dependencies": [
         "WS-01",
@@ -188,7 +188,8 @@
       "packages": [
         "web",
         "ui",
-        "customer-core"
+        "customer-core",
+        "auth"
       ]
     },
     {

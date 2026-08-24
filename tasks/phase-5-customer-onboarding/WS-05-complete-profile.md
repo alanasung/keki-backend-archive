@@ -52,6 +52,10 @@ step that makes a real Cognito account into a Keki customer.
 - `apps/web/app/auth/complete-profile/complete-profile-action.ts` (NEW)
 - `apps/web/app/auth/complete-profile/page.test.tsx` (NEW)
 - `apps/web/app/auth/complete-profile/complete-profile-action.test.ts` (NEW)
+- `packages/auth/src/verify-token.ts` (MODIFY — carry the name claims)
+- `packages/auth/src/session.ts` (MODIFY — carry email and names on the unprovisioned case)
+- `packages/auth/src/verify-token.test.ts` (MODIFY)
+- `packages/auth/src/session.test.ts` (MODIFY)
 
 ## Existing Interfaces to Consume
 
@@ -122,7 +126,6 @@ export const completeProfileSchema = z.object({
 ```
 
 ## Implementation Steps
-
 1. **Build the page** in `page.tsx` as a Server Component. Resolve the session
    result directly — **do not call `requireRole`**, which would redirect an
    unprovisioned user back to this same page and loop forever. This is the one
@@ -137,7 +140,30 @@ export const completeProfileSchema = z.object({
      landing here has nothing to do, and showing them a form that would no-op is
      worse than moving them along
 
-2. **Pre-fill from the verified token.** Cognito's `given_name` and
+2. **Extend `@keki/auth` to carry the claims this page needs — this is in
+   scope.** `VerifiedToken` currently exposes only `sub`, `email`, `tokenUse`,
+   and `expiresAt`, and `SessionResult`'s `unprovisioned` case carries only
+   `cognitoSub`. Neither the email nor the name claims reach this page, so
+   steps 3 and 4 below are impossible without it.
+
+   Add `givenName` and `familyName` to `VerifiedToken`, reading `given_name`
+   and `family_name` and treating a non-string as `undefined` exactly as
+   `email` is already handled. Then widen the `unprovisioned` result to carry
+   `email`, `givenName`, and `familyName` alongside `cognitoSub`.
+
+   Additive only — no existing field changes type or disappears, so nothing
+   that reads a `VerifiedToken` today breaks. Do **not** instead re-extract the
+   cookie and call `verifyToken` directly from the page or the action:
+   `require-session.ts` centralizes that specifically to avoid a second JWKS
+   fetch per request, and duplicating it would put an authentication decision
+   in two places.
+
+3. **Build the form** in `profile-form.tsx` as a `'use client'` island: first
+   name, last name, submit. Use `FormField` from `packages/ui`, disable the
+   control while pending via `useTransition`, and render
+   `result.error.message` on failure.
+
+4. **Pre-fill from the verified token.** Cognito's `given_name` and
    `family_name` claims are present when the user supplied them at sign-up.
    Pre-filling is a courtesy; the fields stay editable, because the hosted UI's
    sign-up form is not necessarily where someone wants their name to come from.
@@ -146,12 +172,7 @@ export const completeProfileSchema = z.object({
    verified token, WS-01 makes it unrepresentable as an input, and rendering it
    as an input invites the expectation that editing it does something.
 
-3. **Build the form** in `profile-form.tsx` as a `'use client'` island: first
-   name, last name, submit. Use `FormField` from `packages/ui`, disable the
-   control while pending via `useTransition`, and render
-   `result.error.message` on failure.
-
-4. **Write the action** in `complete-profile-action.ts`.
+5. **Write the action** in `complete-profile-action.ts`.
 
    **Do not wrap it in `authenticatedAction`.** That wrapper's default
    `requiredRole` is `CUSTOMER`, and `authorize` denies an unprovisioned
@@ -167,7 +188,7 @@ export const completeProfileSchema = z.object({
    Return the same `ActionResult` envelope every other action returns, so the
    form handles failures identically.
 
-5. **Rely on `provisionCustomerProfile`'s idempotence for SC-10.** It returns
+6. **Rely on `provisionCustomerProfile`'s idempotence for SC-10.** It returns
    the existing customer when one is found for the `cognitoSub`, so a double
    submit yields one household. Do not add a second guard on top; two
    mechanisms for one invariant drift.
@@ -177,15 +198,15 @@ export const completeProfileSchema = z.object({
    > is `unique`, so the second insert fails at the database rather than
    > creating a duplicate. Surface that as a retry rather than an error page.
 
-6. **Return the user to where they were going.** WS-04 stores the sanitized
+7. **Return the user to where they were going.** WS-04 stores the sanitized
    `next` during the handshake; read it, re-sanitize, and redirect there,
    defaulting to `/book`. **SC-09.**
 
-7. **Do not create children or collect a household name here.** Onboarding
+8. **Do not create children or collect a household name here.** Onboarding
    should ask for the minimum that makes an account usable. Adding a child is
    WS-07's job, on a page the customer can return to.
 
-8. **Run all four scripts.**
+9. **Run all four scripts.**
 
 ## Tests
 

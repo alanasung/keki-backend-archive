@@ -38,5 +38,5 @@ KEKI_ALLOW_DB_RESET=1 NODE_OPTIONS="--require=dotenv/config" \
 
 echo "verifying against $BRANCH" >&2
 NODE_OPTIONS="--require=dotenv/config" pnpm exec vitest run \
-  --no-file-parallelism --reporter=json --outputFile=vitest-report.json
+  --no-file-parallelism --reporter=default --reporter=json --outputFile=vitest-report.json
 NODE_OPTIONS="--require=dotenv/config" pnpm exec tsx scripts/assert-integration-tests-ran.ts vitest-report.json

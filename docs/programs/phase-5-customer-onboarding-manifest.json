@@ -165,7 +165,7 @@
       "id": "WS-04",
       "name": "/auth/sign-in, /auth/callback, and /auth/sign-out routes",
       "taskFile": "tasks/phase-5-customer-onboarding/WS-04-auth-routes.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-03"

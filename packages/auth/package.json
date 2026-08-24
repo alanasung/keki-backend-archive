@@ -6,7 +6,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./cookies": "./src/cookies.ts"
+    "./cookies": "./src/cookies.ts",
+    "./oauth": "./src/oauth.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

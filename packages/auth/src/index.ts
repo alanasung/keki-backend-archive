@@ -11,14 +11,8 @@ export {
 } from './errors';
 export type { CognitoOAuthEnv } from './oauth-env';
 export { cognitoOAuthEnv } from './oauth-env';
-export {
-  buildAuthorizationUrl,
-  buildSignOutUrl,
-  createPkcePair,
-  exchangeCodeForTokens,
-  refreshSession,
-  shouldRefresh,
-} from './oauth';
+export { buildSignOutUrl, exchangeCodeForTokens, refreshSession, shouldRefresh } from './oauth';
+export { buildAuthorizationUrl, createPkcePair } from './pkce';
 export { findProfileByCognitoSub } from './profile';
 export type { CustomerProfile, Session, SessionResult } from './session';
 export { resolveSession } from './session';

@@ -143,9 +143,13 @@ describe('nav-config', () => {
     expect(new Set(placeholderPageFiles.map((page) => page.urlPath))).toEqual(expectedUrlPaths);
   });
 
-  it('the auth surface matches WS-09s three utility routes', () => {
-    const expectedAuthUrlPaths = new Set(['/auth/sign-in', '/auth/unauthorized', '/auth/complete-profile']);
-    expect(authPageFiles).toHaveLength(3);
+  it('the auth surface matches its remaining placeholder pages', () => {
+    // `/auth/sign-in` was WS-09's placeholder; WS-04 replaced it with a Route
+    // Handler (`route.ts`), since a Server Component cannot write the state
+    // and verifier cookies the redirect handshake needs. It no longer has a
+    // `page.tsx` and so no longer counts here.
+    const expectedAuthUrlPaths = new Set(['/auth/unauthorized', '/auth/complete-profile']);
+    expect(authPageFiles).toHaveLength(2);
     expect(new Set(authPageFiles.map((page) => page.urlPath))).toEqual(expectedAuthUrlPaths);
   });
 

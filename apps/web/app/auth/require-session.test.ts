@@ -45,6 +45,11 @@ vi.mock('react', async (importOriginal) => {
   };
 });
 
+/** Only the `cookie` header responds; the refreshed-token header is absent, as on a request middleware did not refresh. */
+function mockOnlyCookieHeader(cookieValue: string): void {
+  mockHeadersGet.mockImplementation((name: string) => (name === 'cookie' ? cookieValue : null));
+}
+
 describe('getSessionResult', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -62,7 +67,7 @@ describe('getSessionResult', () => {
   // this file is that it does not add a second layer of error handling on
   // top — it simply forwards resolveSession's result or its rejection.
   it('forwards an anonymous result from resolveSession without throwing', async () => {
-    mockHeadersGet.mockReturnValue('keki_id_token=expired-or-invalid');
+    mockOnlyCookieHeader('keki_id_token=expired-or-invalid');
     mockResolveSession.mockResolvedValue({ kind: 'anonymous' });
 
     const { getSessionResult } = await import('./require-session');
@@ -71,7 +76,7 @@ describe('getSessionResult', () => {
   });
 
   it('does not swallow a rejection resolveSession does not itself catch', async () => {
-    mockHeadersGet.mockReturnValue('keki_id_token=whatever');
+    mockOnlyCookieHeader('keki_id_token=whatever');
     const configError = new Error('a genuine configuration error');
     mockResolveSession.mockRejectedValue(configError);
 
@@ -82,7 +87,7 @@ describe('getSessionResult', () => {
 
   // Case 10
   it('resolves the session once per request, not once per call', async () => {
-    mockHeadersGet.mockReturnValue('keki_id_token=whatever');
+    mockOnlyCookieHeader('keki_id_token=whatever');
     mockResolveSession.mockResolvedValue({ kind: 'anonymous' });
 
     const { getSessionResult } = await import('./require-session');
@@ -92,5 +97,29 @@ describe('getSessionResult', () => {
     await getSessionResult();
 
     expect(mockResolveSession).toHaveBeenCalledTimes(1);
+  });
+
+  describe('a token middleware refreshed', () => {
+    it('resolves the session from the refreshed-token header, not the (still valid, but about to expire) cookie', async () => {
+      mockHeadersGet.mockImplementation((name: string) =>
+        name === 'x-keki-refreshed-id-token' ? 'refreshed-token' : 'keki_id_token=near-expiry-token',
+      );
+      mockResolveSession.mockResolvedValue({ kind: 'anonymous' });
+
+      const { getSessionResult } = await import('./require-session');
+      await getSessionResult();
+
+      expect(mockResolveSession).toHaveBeenCalledWith('refreshed-token');
+    });
+
+    it('falls back to the cookie when middleware did not refresh', async () => {
+      mockOnlyCookieHeader('keki_id_token=whatever');
+      mockResolveSession.mockResolvedValue({ kind: 'anonymous' });
+
+      const { getSessionResult } = await import('./require-session');
+      await getSessionResult();
+
+      expect(mockResolveSession).toHaveBeenCalledWith('keki_id_token=whatever');
+    });
   });
 });

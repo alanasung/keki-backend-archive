@@ -37,6 +37,8 @@ function baseClaims(
     aud: cognitoEnv.clientId,
     token_use: 'id',
     email: 'person@example.com',
+    given_name: 'Ada',
+    family_name: 'Lovelace',
     iat: now,
     exp: now + 3600,
     ...overrides,
@@ -66,7 +68,23 @@ describe('verifyToken', () => {
     expect(result.sub).toBe('test-subject-1');
     expect(result.tokenUse).toBe('id');
     expect(result.email).toBe('person@example.com');
+    expect(result.givenName).toBe('Ada');
+    expect(result.familyName).toBe('Lovelace');
     expect(result.expiresAt).toBeInstanceOf(Date);
+  });
+
+  it('treats missing name claims as undefined', async () => {
+    const key = createTestSigningKey();
+    const { cognitoEnv, verifyToken } = await loadVerifier(key);
+    const claims = baseClaims(cognitoEnv);
+    delete claims.given_name;
+    delete claims.family_name;
+    const token = signTestJwt(key, claims);
+
+    const result = await verifyToken(token);
+
+    expect(result.givenName).toBeUndefined();
+    expect(result.familyName).toBeUndefined();
   });
 
   // Case 2

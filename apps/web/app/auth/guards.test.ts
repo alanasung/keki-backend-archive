@@ -45,7 +45,13 @@ function authenticated(role: Role): Extract<SessionResult, { kind: 'authenticate
 }
 
 const anonymous: SessionResult = { kind: 'anonymous' };
-const unprovisioned: SessionResult = { kind: 'unprovisioned', cognitoSub: 'cognito-sub-2' };
+const unprovisioned: SessionResult = {
+  kind: 'unprovisioned',
+  cognitoSub: 'cognito-sub-2',
+  email: undefined,
+  givenName: undefined,
+  familyName: undefined,
+};
 
 function redirectTargetOf(url: string): string {
   return `REDIRECT:${url}`;

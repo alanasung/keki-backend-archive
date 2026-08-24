@@ -71,11 +71,39 @@ describe('resolveSession', () => {
     const key = createTestSigningKey();
     const { cognitoEnv, resolveSession } = await loadResolveSession(key);
     mockFindProfileByCognitoSub.mockResolvedValue(null);
-    const token = signedToken(key, cognitoEnv, { sub: 'cognito-sub-unprovisioned' });
+    const token = signedToken(key, cognitoEnv, {
+      sub: 'cognito-sub-unprovisioned',
+      email: 'ada@example.com',
+      given_name: 'Ada',
+      family_name: 'Lovelace',
+    });
 
     const result = await resolveSession(token);
 
-    expect(result).toEqual({ kind: 'unprovisioned', cognitoSub: 'cognito-sub-unprovisioned' });
+    expect(result).toEqual({
+      kind: 'unprovisioned',
+      cognitoSub: 'cognito-sub-unprovisioned',
+      email: 'ada@example.com',
+      givenName: 'Ada',
+      familyName: 'Lovelace',
+    });
+  });
+
+  it('resolves unprovisioned with undefined email and name claims when the token omits them', async () => {
+    const key = createTestSigningKey();
+    const { cognitoEnv, resolveSession } = await loadResolveSession(key);
+    mockFindProfileByCognitoSub.mockResolvedValue(null);
+    const token = signedToken(key, cognitoEnv, { sub: 'cognito-sub-bare' });
+
+    const result = await resolveSession(token);
+
+    expect(result).toEqual({
+      kind: 'unprovisioned',
+      cognitoSub: 'cognito-sub-bare',
+      email: undefined,
+      givenName: undefined,
+      familyName: undefined,
+    });
   });
 
   // WS-09 acceptance criterion #7: an invalid or expired token yields

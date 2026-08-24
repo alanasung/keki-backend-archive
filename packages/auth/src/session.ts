@@ -20,7 +20,13 @@ export interface Session {
 export type SessionResult =
   | { readonly kind: 'authenticated'; readonly session: Session }
   | { readonly kind: 'anonymous' }
-  | { readonly kind: 'unprovisioned'; readonly cognitoSub: string };
+  | {
+      readonly kind: 'unprovisioned';
+      readonly cognitoSub: string;
+      readonly email: string | undefined;
+      readonly givenName: string | undefined;
+      readonly familyName: string | undefined;
+    };
 
 /**
  * Verifies a token and loads its profile. Pure of any framework: it takes the
@@ -50,7 +56,13 @@ export async function resolveSession(jwt: string | null): Promise<SessionResult>
   const profile = await findProfileByCognitoSub(verified.sub);
 
   if (profile === null) {
-    return { kind: 'unprovisioned', cognitoSub: verified.sub };
+    return {
+      kind: 'unprovisioned',
+      cognitoSub: verified.sub,
+      email: verified.email,
+      givenName: verified.givenName,
+      familyName: verified.familyName,
+    };
   }
 
   return {

@@ -101,7 +101,15 @@ const placeholderPageFiles = pageFiles.filter(
     page.urlPath !== '/staff/occupancy' &&
     !page.urlPath.startsWith('/auth/'),
 );
-const authPageFiles = pageFiles.filter((page) => page.urlPath.startsWith('/auth/'));
+const authPageFiles = pageFiles.filter(
+  (page) =>
+    page.urlPath.startsWith('/auth/') &&
+    // `/auth/complete-profile` (WS-05) is the first-time profile-provisioning
+    // form, built out past the placeholder stage the same as `/book` and
+    // `/account` above — asserted with the other non-placeholder surfaces
+    // rather than here.
+    page.urlPath !== '/auth/complete-profile',
+);
 const surfaces = Object.keys(navConfig) as Array<keyof typeof navConfig>;
 
 describe('nav-config', () => {
@@ -148,8 +156,10 @@ describe('nav-config', () => {
     // Handler (`route.ts`), since a Server Component cannot write the state
     // and verifier cookies the redirect handshake needs. It no longer has a
     // `page.tsx` and so no longer counts here.
-    const expectedAuthUrlPaths = new Set(['/auth/unauthorized', '/auth/complete-profile']);
-    expect(authPageFiles).toHaveLength(2);
+    // `/auth/complete-profile` was built out by WS-05 and is excluded from
+    // `authPageFiles` above.
+    const expectedAuthUrlPaths = new Set(['/auth/unauthorized']);
+    expect(authPageFiles).toHaveLength(1);
     expect(new Set(authPageFiles.map((page) => page.urlPath))).toEqual(expectedAuthUrlPaths);
   });
 
@@ -234,6 +244,12 @@ describe('nav-config', () => {
       // customer-core's household queries and commerce-core's order history
       // — the same sanctioned boundary as the ordering page.
       `(customer)${sep}account${sep}`,
+      // The complete-profile page (WS-05): its Server Action calls
+      // customer-core's `provisionCustomerProfile` directly, the same
+      // sanctioned boundary as the top-level `actions/` module — this is the
+      // one mutation that must run before a profile exists, so it cannot go
+      // through that module's `authenticatedAction` wrapper.
+      `auth${sep}complete-profile${sep}`,
       'server-clients',
     ];
     const sourceFiles = findSourceFiles(appDir).filter(

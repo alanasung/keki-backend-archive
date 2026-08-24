@@ -6,6 +6,8 @@ import { InvalidTokenError } from './errors';
 export interface VerifiedToken {
   readonly sub: string;
   readonly email: string | undefined;
+  readonly givenName: string | undefined;
+  readonly familyName: string | undefined;
   readonly tokenUse: 'id' | 'access';
   readonly expiresAt: Date;
 }
@@ -51,7 +53,7 @@ export async function verifyToken(jwt: string): Promise<VerifiedToken> {
     throw new InvalidTokenError(`Token verification failed: ${message}`, { cause: error });
   }
 
-  const { sub, exp, token_use: tokenUse, email } = payload;
+  const { sub, exp, token_use: tokenUse, email, given_name: givenName, family_name: familyName } = payload;
 
   if (typeof sub !== 'string') {
     throw new InvalidTokenError('Token is missing a "sub" claim.');
@@ -66,6 +68,8 @@ export async function verifyToken(jwt: string): Promise<VerifiedToken> {
   return {
     sub,
     email: typeof email === 'string' ? email : undefined,
+    givenName: typeof givenName === 'string' ? givenName : undefined,
+    familyName: typeof familyName === 'string' ? familyName : undefined,
     tokenUse,
     expiresAt: new Date(exp * 1000),
   };

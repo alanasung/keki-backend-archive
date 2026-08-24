@@ -77,17 +77,16 @@ vi.mock('drizzle-orm', () => ({
   eq: vi.fn((column: unknown, value: unknown) => ({ column, value })),
 }));
 
-import { addChild, provisionCustomerProfile, startWaiverSigning, updateHousehold } from './commands';
+import { provisionCustomerProfile, startWaiverSigning } from './commands';
 
+// addChild and updateHousehold are real commands as of WS-06 — their
+// coverage lives in children.integration.test.ts against a live database,
+// since both are transaction-based writes that a mocked `db` cannot
+// faithfully exercise. Only startWaiverSigning is still a Phase 1 stub.
 describe('deferred customer commands', () => {
   const householdId = createHouseholdId('11111111-1111-4111-8111-111111111111');
 
   const cases: Array<[string, () => Promise<unknown>]> = [
-    [
-      'addChild',
-      () => addChild({ householdId, firstName: 'Grace', lastName: 'Lovelace', dateOfBirth: new Date() }),
-    ],
-    ['updateHousehold', () => updateHousehold({ householdId, name: 'New Name' })],
     [
       'startWaiverSigning',
       () =>

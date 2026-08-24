@@ -196,7 +196,7 @@
       "id": "WS-06",
       "name": "customer-core: real addChild and updateHousehold",
       "taskFile": "tasks/phase-5-customer-onboarding/WS-06-customer-write-paths.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "S",
       "dependencies": [
         "WS-01"

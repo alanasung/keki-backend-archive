@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
-import { customers, db, households } from '@keki/database';
+import { children, customers, db, households, withTransaction, type Tx } from '@keki/database';
 import {
+  createChildId,
+  createCustomerId,
+  createHouseholdId,
   NotImplementedInPhase1,
   type Child,
   type Customer,
@@ -9,7 +12,21 @@ import {
   type HouseholdId,
   type WaiverProvider,
 } from '@keki/contracts';
+import { HouseholdNotFoundError, InvalidDateOfBirthError } from './errors';
 import { toCustomer } from './queries';
+
+// `date_of_birth` is a `date` column (see packages/database/src/schema/people.ts),
+// which Drizzle reads and writes as a plain `YYYY-MM-DD` string, not a
+// timestamp. Formatting via the local getters (rather than
+// `toISOString().slice(0, 10)`, which normalizes through UTC first) keeps a
+// late-evening local `Date` on its own calendar day instead of rolling it
+// into tomorrow.
+function toCalendarDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 async function findCustomerByCognitoSub(cognitoSub: string): Promise<Customer | null> {
   const rows = await db.select().from(customers).where(eq(customers.cognitoSub, cognitoSub)).limit(1);
@@ -83,19 +100,95 @@ export async function provisionCustomerProfile(input: {
   return toCustomer(insertedCustomer);
 }
 
-export function addChild(input: {
+export async function addChild(input: {
   householdId: HouseholdId;
   firstName: string;
   lastName: string;
   dateOfBirth: Date;
+  now?: Date;
+  tx?: Tx;
 }): Promise<Child> {
-  void input;
-  return Promise.reject(new NotImplementedInPhase1('addChild'));
+  const now = input.now ?? new Date();
+
+  const run = async (tx: Tx): Promise<Child> => {
+    const householdRows = await tx
+      .select()
+      .from(households)
+      .where(eq(households.id, input.householdId))
+      .limit(1);
+    if (householdRows[0] === undefined) {
+      throw new HouseholdNotFoundError(input.householdId);
+    }
+
+    // Re-checked here even though addChildSchema already refuses a future
+    // date at the HTTP boundary: this command is also reachable from a seed
+    // script, a future kiosk surface, and a test, so the invariant belongs
+    // in the domain, not only the schema.
+    if (toCalendarDateString(input.dateOfBirth) > toCalendarDateString(now)) {
+      throw new InvalidDateOfBirthError(input.dateOfBirth);
+    }
+
+    const [inserted] = await tx
+      .insert(children)
+      .values({
+        householdId: input.householdId,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        dateOfBirth: toCalendarDateString(input.dateOfBirth),
+      })
+      .returning();
+
+    if (inserted === undefined) {
+      throw new Error(`addChild: insert into household "${input.householdId}" returned no row.`);
+    }
+
+    return {
+      id: createChildId(inserted.id),
+      householdId: createHouseholdId(inserted.householdId),
+      firstName: inserted.firstName,
+      lastName: inserted.lastName,
+      dateOfBirth: new Date(inserted.dateOfBirth),
+      createdAt: inserted.createdAt,
+      updatedAt: inserted.updatedAt,
+    };
+  };
+
+  return input.tx !== undefined ? run(input.tx) : withTransaction(run);
 }
 
-export function updateHousehold(input: { householdId: HouseholdId; name: string }): Promise<Household> {
-  void input;
-  return Promise.reject(new NotImplementedInPhase1('updateHousehold'));
+export async function updateHousehold(input: {
+  householdId: HouseholdId;
+  name: string;
+  tx?: Tx;
+}): Promise<Household & { name: string }> {
+  const run = async (tx: Tx): Promise<Household & { name: string }> => {
+    // A single guarded UPDATE rather than a read-then-write: it is both
+    // atomic and doubles as the existence check via the empty-`returning()`
+    // case below.
+    const updatedRows = await tx
+      .update(households)
+      .set({ name: input.name, updatedAt: new Date() })
+      .where(eq(households.id, input.householdId))
+      .returning();
+
+    const updated = updatedRows[0];
+    if (updated === undefined) {
+      throw new HouseholdNotFoundError(input.householdId);
+    }
+    if (updated.primaryCustomerId === null) {
+      throw new Error(`updateHousehold: household "${updated.id}" has no primary customer assigned.`);
+    }
+
+    return {
+      id: createHouseholdId(updated.id),
+      primaryCustomerId: createCustomerId(updated.primaryCustomerId),
+      name: updated.name,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    };
+  };
+
+  return input.tx !== undefined ? run(input.tx) : withTransaction(run);
 }
 
 // The only Phase 1 consumer of WaiverProvider — the dependency direction is

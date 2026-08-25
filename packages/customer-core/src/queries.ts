@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, ilike, or, type SQL } from 'drizzle-orm';
 import { children, customers, db, households } from '@keki/database';
 import {
   createChildId,
@@ -10,6 +10,10 @@ import {
   type Household,
   type HouseholdId,
 } from '@keki/contracts';
+import { SearchQueryTooShortError } from './errors';
+
+const SEARCH_QUERY_MIN_LENGTH = 2;
+const SEARCH_DEFAULT_LIMIT = 25;
 
 interface CustomerRow {
   id: string;
@@ -117,4 +121,54 @@ export async function listHouseholdMembers(
     customers: customerRows.map(toCustomer),
     children: childRows.map(toChild),
   };
+}
+
+export interface CustomerSearchResult {
+  readonly customerId: CustomerId;
+  readonly householdId: HouseholdId;
+  readonly firstName: string;
+  readonly lastName: string;
+  readonly email: string;
+}
+
+function toCustomerSearchResult(row: CustomerRow): CustomerSearchResult {
+  return {
+    customerId: createCustomerId(row.id),
+    householdId: createHouseholdId(row.householdId),
+    firstName: row.firstName,
+    lastName: row.lastName,
+    email: row.email ?? '',
+  };
+}
+
+// Exported (but not re-exported from index.ts) so search.integration.test.ts
+// can build the same condition against a real `db` and inspect `.toSQL()`
+// directly, rather than re-deriving it and testing a copy.
+//
+// The email branch is a plain `eq` against the `citext` column: citext's
+// comparison operator is already case-insensitive, and its unique index
+// only serves an equality lookup — wrapping it in `lower()` (to fake
+// case-insensitivity on a plain-text column) would both be redundant here
+// and defeat that index by making every search a sequential scan.
+export function buildCustomerSearchCondition(query: string): SQL | undefined {
+  const pattern = `%${query}%`;
+  return or(eq(customers.email, query), ilike(customers.firstName, pattern), ilike(customers.lastName, pattern));
+}
+
+export async function searchCustomers(input: {
+  query: string;
+  limit?: number;
+}): Promise<readonly CustomerSearchResult[]> {
+  const trimmed = input.query.trim();
+  if (trimmed.length < SEARCH_QUERY_MIN_LENGTH) {
+    throw new SearchQueryTooShortError(trimmed);
+  }
+
+  const rows = await db
+    .select()
+    .from(customers)
+    .where(buildCustomerSearchCondition(trimmed))
+    .limit(input.limit ?? SEARCH_DEFAULT_LIMIT);
+
+  return rows.map(toCustomerSearchResult);
 }

@@ -21,3 +21,14 @@ export class InvalidDateOfBirthError extends Error {
     this.dateOfBirth = dateOfBirth;
   }
 }
+
+export class SearchQueryTooShortError extends Error {
+  readonly kind = 'SearchQueryTooShortError';
+  readonly query: string;
+
+  constructor(query: string) {
+    super(`Search query "${query}" is too short; at least 2 characters are required.`);
+    this.name = 'SearchQueryTooShortError';
+    this.query = query;
+  }
+}

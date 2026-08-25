@@ -87,6 +87,11 @@ const placeholderPageFiles = pageFiles.filter(
     // on an occurrence — built out past the placeholder stage, same as
     // `/admin/schedules` above.
     page.urlPath !== '/admin/reservations' &&
+    // `/admin/customers` (WS-08) is a read-only staff lookup — a household
+    // found by customer email or name, its members, children, and recent
+    // orders — built out past the placeholder stage, same as
+    // `/admin/reservations` above.
+    page.urlPath !== '/admin/customers' &&
     // `/staff/today` (WS-06) lists today's occurrences with expected and
     // arrived counts — built out past the placeholder stage, same as the
     // admin surfaces above.
@@ -146,8 +151,8 @@ describe('nav-config', () => {
     // `/account` is deliberately absent: it was built out into a read-only
     // household, order-history, passes, and waivers view, so it is asserted
     // with the other non-placeholder surfaces rather than here.
-    const expectedUrlPaths = new Set(['/kiosk/book', '/kiosk/waiver', '/admin/customers']);
-    expect(placeholderPageFiles).toHaveLength(3);
+    const expectedUrlPaths = new Set(['/kiosk/book', '/kiosk/waiver']);
+    expect(placeholderPageFiles).toHaveLength(2);
     expect(new Set(placeholderPageFiles.map((page) => page.urlPath))).toEqual(expectedUrlPaths);
   });
 
@@ -214,6 +219,14 @@ describe('nav-config', () => {
       // boundary as the offerings and schedules pages, with no Server
       // Actions since this surface performs no mutation.
       `admin${sep}reservations${sep}`,
+      // The customers page (WS-08): a read-only Server Component that
+      // searches customers via `searchCustomers` and, once a household is
+      // selected, resolves its members via `listHouseholdMembers`, its name
+      // via `getHouseholdName`, and its recent orders via
+      // `listOrdersForHousehold` — the same sanctioned boundary as the
+      // reservations page, with no Server Actions since this surface
+      // performs no mutation.
+      `admin${sep}customers${sep}`,
       // WS-05's staff Server Actions: the same sanctioned data-access
       // boundary as the top-level `actions/` and `admin/actions/` modules,
       // established for the staff surface. WS-06 through WS-08 exempt the

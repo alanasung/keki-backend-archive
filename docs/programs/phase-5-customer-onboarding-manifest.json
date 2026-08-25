@@ -225,7 +225,7 @@
       "id": "WS-08",
       "name": "/admin/customers: staff customer lookup",
       "taskFile": "tasks/phase-5-customer-onboarding/WS-08-admin-customers.md",
-      "status": "not_started",
+      "status": "complete",
       "size": "M",
       "dependencies": [
         "WS-01"

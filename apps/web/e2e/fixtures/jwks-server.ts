@@ -152,12 +152,24 @@ export interface SignIdTokenInput {
  * Signs an ID token against the persisted private key, shaped to satisfy
  * `packages/auth/src/verify-token.ts`: a `token_use: 'id'` claim (required
  * by `validateCognitoJwtFields`) and an `aud` matching `COGNITO_CLIENT_ID`.
+ *
+ * `email` defaults to one deterministically derived from `cognitoSub` when
+ * omitted. A real Cognito account always carries an email claim (this app's
+ * hosted UI requires email verification at signup); "no `customers` row yet"
+ * (`session.ts`'s `createUnprovisionedContext`, which never passes `email`)
+ * is not the same thing as "no email claim", and
+ * `apps/web/app/auth/complete-profile/complete-profile-action.ts` correctly
+ * refuses to provision a profile from a token that genuinely lacks one. This
+ * keeps every caller that already passes an explicit `email` unchanged,
+ * while making the unprovisioned case a faithful stand-in for a real
+ * unprovisioned Cognito session instead of an unrepresentable one.
  */
 export async function signIdToken(input: SignIdTokenInput): Promise<string> {
   const { privateJwk } = await ensureSigningKeyPair();
   const signingKey = await importJWK(privateJwk, 'RS256');
+  const email = input.email ?? `${input.cognitoSub.replace(/[^a-zA-Z0-9]/g, '-')}@example.test`;
 
-  const builder = new SignJWT({ token_use: 'id', ...(input.email !== undefined ? { email: input.email } : {}) })
+  const builder = new SignJWT({ token_use: 'id', email })
     .setProtectedHeader({ alg: 'RS256', kid: KEY_ID })
     .setIssuedAt()
     .setIssuer(ISSUER)

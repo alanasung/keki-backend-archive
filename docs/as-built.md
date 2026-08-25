@@ -1,17 +1,21 @@
 # keki-backend-prod — As-Built System Snapshot
 
-<!-- Last updated: 2026-08-23 after program: phase-4-staff-surfaces -->
+<!-- Last updated: 2026-08-24 after program: phase-5-customer-onboarding -->
 
-Three domains are now real end to end: **ordering** (`phase-2-square-ordering`)
+Four domains are now real end to end: **ordering** (`phase-2-square-ordering`)
 — browse the cafe menu and classes, cart, Square checkout, webhook-recorded
 payment, order history —, **admin catalog management**
 (`phase-3-admin-catalog`) — managers create, publish, and schedule classes
-through `/admin`, with every mutation audited in `staff_audit_log` —, and
+through `/admin`, with every mutation audited in `staff_audit_log` —,
 **front-of-house staff surfaces** (`phase-4-staff-surfaces`) — staff see
 today's schedule, check participants in and out of arrived state per
-participant, and see who is currently in the building on `/staff`. Not every
-domain command is a stub anymore; see Known Limitations for what still is
-(play passes, waivers, payment capture/refund, kiosk, notification delivery).
+participant, and see who is currently in the building on `/staff` —, and
+**customer onboarding** (`phase-5-customer-onboarding`) — a real Cognito
+OAuth handshake with PKCE, first-time profile provisioning, a household that
+can add a child and rename itself on `/account`, and a read-only staff lookup
+of any household on `/admin/customers`. Not every domain command is a stub
+anymore; see Known Limitations for what still is (play passes, waivers,
+payment capture/refund, kiosk, notification delivery).
 
 ## Packages & Key Exports
 
@@ -112,7 +116,14 @@ Key exports: `verifyToken` (Cognito JWT), `resolveSession`, `authorize`
 `InvalidTokenError`, `ProfileNotFoundError`). Cognito owns identity; the
 `customers` row (keyed by `cognito_sub`) owns profile and role.
 `COGNITO_ISSUER`/`COGNITO_JWKS_URI` test overrides are refused when
-`NODE_ENV === 'production'`.
+`NODE_ENV === 'production'`. `phase-5-customer-onboarding` adds the real
+OAuth handshake: `createPkcePair`/`buildAuthorizationUrl` (the
+authorization-code + PKCE request), `exchangeCodeForTokens`, `refreshSession`
+/ `shouldRefresh` (near-expiry refresh, used by `middleware.ts`),
+`buildSignOutUrl`, `cognitoOAuthEnv` (eagerly-validated
+`COGNITO_HOSTED_UI_URL`/`COGNITO_REDIRECT_URI`/`COGNITO_SIGN_OUT_URI`,
+`https`-only in production), and typed errors `OAuthExchangeError`,
+`OAuthRefreshError`, `OAuthStateMismatchError`.
 
 ### Domain cores (all depend on contracts + database only)
 
@@ -122,9 +133,12 @@ Key exports: `verifyToken` (Cognito JWT), `resolveSession`, `authorize`
   `holdReservation` safe under concurrency; a `capacity_exceeded` Postgres
   error surfaces as a typed domain error).
 - **@keki/customer-core** — `getCustomerById`, `getHouseholdById`,
-  `listHouseholdMembers`, `provisionCustomerProfile` (real); `addChild`,
-  `updateHousehold`, `startWaiverSigning` (still Phase-1 stubs — waiver
-  signing is Phase 2+ per `docs/vision.md`).
+  `getHouseholdName`, `listHouseholdMembers`, `provisionCustomerProfile`
+  (idempotent on `cognito_sub`), `searchCustomers` (real); `addChild`,
+  `updateHousehold` (real as of `phase-5-customer-onboarding` — this
+  program's first real `customer-core` write paths since Phase 1);
+  `startWaiverSigning` (still a Phase-1 stub — waiver signing is Phase 2+ per
+  `docs/vision.md`).
 - **@keki/pass-core** — `getPassBalance`, `computeBalance` (ledger replay,
   real); `issuePass`, `redeemCredits`, `expirePass` (still stubs — play
   passes are Phase 2+).
@@ -164,14 +178,43 @@ actions, by `app/admin/actions/*` (the MANAGER boundary
 `@keki/square-client`, honoring `KEKI_ALLOW_SQUARE_STUB` outside production
 only.
 
+`phase-5-customer-onboarding` adds the real OAuth handshake in place of the
+Phase 1 placeholder: `/auth/sign-in` (a Route Handler, not a page — a Server
+Component cannot set cookies during render — that sets the `state`/
+`verifier`/`next` handshake cookies and redirects to Cognito's hosted UI with
+PKCE), `/auth/callback` (validates `state` in constant time, exchanges the
+code for tokens, and redirects to the originally-requested page or `/book`),
+`/auth/sign-out` and `/auth/sign-out/complete` (clear the session and land on
+Cognito's own sign-out redirect), and `/auth/complete-profile` (the one
+mutation that must run before a profile exists — provisions a household and
+customer for an `unprovisioned` session via `provisionCustomerProfile`,
+idempotent on `cognito_sub`). Four cookies carry the session, their
+attributes centralized in one place (`apps/web/app/auth/session-cookies.ts`)
+rather than scattered across each route: `keki_id_token` (the one
+`@keki/auth`'s `ID_TOKEN_COOKIE_NAME` names, read by every guard),
+`keki_refresh_token`, and the short-lived `keki_oauth_state` /
+`keki_oauth_verifier` handshake pair (plus `keki_oauth_next`, round-tripping
+the originally-requested page through the redirect on the same lifetime).
+`middleware.ts` refreshes a near-expired id token on any matched request
+using the refresh token — a narrow exception to its "stamp `x-pathname`,
+fast-path an anonymous redirect" job, not a foothold for real authorization,
+which still lives entirely in `guards.ts`'s Node-runtime `requireRole`.
+
 Customer surface is no longer placeholder-only: `/book` (cafe items +
-bookable classes, live seat counts), `/cart` (cookie-backed, HMAC-signed),
-`/checkout/mock/[orderId]` (a local stand-in for Square's hosted checkout
-page in dev), `/orders/[orderId]`. Admin surface
-(`phase-3-admin-catalog`): `/admin/offerings` (create/edit/publish/archive),
+bookable classes, live seat counts — and, since `phase-5-customer-onboarding`,
+a participant picker that offers a newly added child immediately), `/cart`
+(cookie-backed, HMAC-signed), `/checkout/mock/[orderId]` (a local stand-in
+for Square's hosted checkout page in dev), `/orders/[orderId]`, and
+`/account` (`phase-5-customer-onboarding`: household members and order
+history, adding a child, and renaming the household — editing or removing an
+existing member, buying/spending a play pass, and signing a waiver remain
+unbuilt, and the page says so directly rather than rendering dead controls).
+Admin surface: `/admin/offerings` (create/edit/publish/archive),
 `/admin/schedules` (schedule/edit-capacity/cancel occurrences),
-`/admin/reservations` (per-occurrence roster), `/admin/customers`
-(placeholder still — out of this program's scope). Staff surface
+`/admin/reservations` (per-occurrence roster) — all `phase-3-admin-catalog`
+— and `/admin/customers` (`phase-5-customer-onboarding`: a read-only staff
+lookup by customer email or name, showing a household's members, children,
+and recent orders — no mutation control of any kind). Staff surface
 (`phase-4-staff-surfaces`, all reading `@keki/staff-ops`): `/staff/today`
 (today's occurrences with expected-vs-arrived counts, in the cafe's
 timezone), `/staff/check-in` (per-occurrence roster with check-in/undo/
@@ -248,8 +291,8 @@ surface, one authorization boundary each (`authenticatedAction`, see the
 **Customer `(customer)`** (session required): `/account`, `/book`, `/cart`, `/checkout/mock/[orderId]`, `/orders/[orderId]`
 **Kiosk `/kiosk`** (shared `KIOSK_DEVICE_TOKEN` device session): `/kiosk/book`, `/kiosk/waiver` (still placeholders)
 **Staff `/staff`** (role ≥ FRONT_OF_HOUSE): `/staff/today`, `/staff/check-in`, `/staff/occupancy` (real, `phase-4-staff-surfaces`)
-**Admin `/admin`** (role ≥ MANAGER): `/admin/offerings`, `/admin/schedules`, `/admin/reservations` (real, `phase-3-admin-catalog`); `/admin/customers` (still placeholder)
-**Auth**: `/auth/sign-in`, `/auth/complete-profile`, `/auth/unauthorized`
+**Admin `/admin`** (role ≥ MANAGER): `/admin/offerings`, `/admin/schedules`, `/admin/reservations` (real, `phase-3-admin-catalog`); `/admin/customers` (real, `phase-5-customer-onboarding`)
+**Auth**: `/auth/sign-in` (Route Handler, redirects to Cognito's hosted UI), `/auth/callback`, `/auth/sign-out`, `/auth/sign-out/complete`, `/auth/complete-profile`, `/auth/unauthorized`
 **Public**: `/` (root landing)
 
 One HTTP ingress outside Next.js: the `square-webhook` Lambda Function URL —
@@ -310,20 +353,30 @@ PENDING and eventually dead-letter via `attempts`.
 
 ## Known Limitations / Tech Debt
 
-Resolved by `phase-2-square-ordering`, `phase-3-admin-catalog`, and
-`phase-4-staff-surfaces` (kept here only so the "as of" history is legible,
-not as open items): reservation capacity enforcement, real webhook signature
-verification, Server Actions existing at all, `staff_audit_log` having a
-writer, and the staff surfaces (`/staff/today`, `/staff/check-in`,
-`/staff/occupancy`) no longer being placeholders.
+Resolved by `phase-2-square-ordering`, `phase-3-admin-catalog`,
+`phase-4-staff-surfaces`, and `phase-5-customer-onboarding` (kept here only
+so the "as of" history is legible, not as open items): reservation capacity
+enforcement, real webhook signature verification, Server Actions existing at
+all, `staff_audit_log` having a writer, the staff surfaces (`/staff/today`,
+`/staff/check-in`, `/staff/occupancy`) no longer being placeholders, the
+placeholder `/auth/sign-in` page replaced by a real Cognito OAuth handshake,
+`customer-core`'s `addChild`/`updateHousehold` no longer being stubs, and
+`/account`/`/admin/customers` no longer being placeholders.
 
 Still open, per `docs/vision.md`'s "Scope: Phase 2+":
 
 - **Play passes are still stubs** — `issuePass`, `redeemCredits`,
   `expirePass` all reject `NotImplementedInPhase1`; `play_pass_ledger`'s
   append-only guarantee is enforced but nothing writes to it yet.
-- **Waiver signing is still a stub** — `startWaiverSigning`, and
-  `customer-core`'s `addChild`/`updateHousehold`.
+- **Waiver signing is still a stub** — `startWaiverSigning`.
+- **No social login or MFA** — the OAuth handshake drives only the standard
+  authorization-code + PKCE flow against Cognito's hosted UI; adding another
+  identity provider or multi-factor is a Cognito console/infra
+  configuration decision, not something this program's code gates on.
+- **No editing or deleting a child, and no staff editing a household** —
+  `/account` can add a child and rename a household but not edit or remove
+  an existing member; `/admin/customers` is read-only, by design (see
+  `page.test.tsx`'s "renders no mutation control of any kind").
 - **Payment capture/refund are still stubs** — `capturePayment`,
   `refundPayment` in `commerce-core`. Not on the checkout-link happy path;
   needed once refunds or manual capture are in scope.
@@ -334,7 +387,6 @@ Still open, per `docs/vision.md`'s "Scope: Phase 2+":
 - **Notification providers are still no-ops** (`createNoopProviders`) — no
   real SES/SMS/Klaviyo integration, and no caller yet enqueues an order or
   booking confirmation onto the outbox at all.
-- **`/admin/customers` is still a placeholder.**
 - **No check-out on the staff surface** — `reservation_participants` has no
   `checked_out_at` column; `/staff/occupancy` counts everyone checked in to
   an occurrence that has not yet ended, so someone who leaves early still
@@ -377,3 +429,16 @@ Still open, per `docs/vision.md`'s "Scope: Phase 2+":
    boundary. Closed with `staff-check-in.spec.ts`, the Playwright journey
    proving a check-in on `/staff/check-in` is what `/staff/occupancy` counts
    (SC-17). Built 2026-08-22 → 2026-08-23 (all nine workstreams complete).
+5. `phase-5-customer-onboarding` — the real Cognito OAuth handshake end to
+   end: `@keki/auth`'s authorization-code + PKCE flow (`/auth/sign-in`,
+   `/auth/callback`, `/auth/sign-out(/complete)`), the four session cookies
+   centralized in `session-cookies.ts`, first-time profile provisioning
+   (`/auth/complete-profile`, idempotent on `cognito_sub`), `customer-core`'s
+   first real write paths since Phase 1 (`addChild`, `updateHousehold`), the
+   editable `/account`, and the read-only staff lookup `/admin/customers`.
+   Closed with `customer-onboarding.spec.ts`, the Playwright journey proving
+   an unprovisioned account can complete a profile, add a child, and book
+   that child into a class — with the newly added child selectable in the
+   booking participant picker (SC-18, SC-15) — plus SC-10's idempotence and
+   SC-17's proof that the existing session-cookie contract did not move.
+   Built 2026-08-23 → 2026-08-24 (all nine workstreams complete).

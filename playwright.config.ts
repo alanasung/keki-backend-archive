@@ -6,6 +6,9 @@ import {
   BASE_URL,
   CART_COOKIE_SECRET,
   COGNITO_CLIENT_ID,
+  COGNITO_HOSTED_UI_URL,
+  COGNITO_REDIRECT_URI,
+  COGNITO_SIGN_OUT_URI,
   COGNITO_USER_POOL_ID,
   KIOSK_DEVICE_TOKEN,
 } from './apps/web/e2e/fixtures/test-env';
@@ -45,7 +48,18 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'pnpm dev',
-    url: BASE_URL,
+    // Not `BASE_URL` (`/`) — WS-09 (phase-5-customer-onboarding): an
+    // anonymous `GET /` redirects through `/book` and middleware's
+    // anonymous guard to `/auth/sign-in`, which (WS-04) now redirects
+    // further, for real, to Cognito's hosted UI. The readiness probe's HTTP
+    // client follows redirects, so polling `/` chases that chain out to
+    // `COGNITO_HOSTED_UI_URL` — a host that deliberately does not resolve
+    // (see fixtures/test-env.ts) — and never observes a response, timing
+    // out `webServer` startup entirely regardless of whether the app itself
+    // is healthy. `/auth/unauthorized` is a public, static page: it renders
+    // unconditionally with no redirect and no auth requirement, so it
+    // reports readiness the moment the server can actually serve a request.
+    url: `${BASE_URL}/auth/unauthorized`,
     reuseExistingServer: !process.env['CI'],
     timeout: 120_000,
     env: {
@@ -57,6 +71,13 @@ export default defineConfig({
       COGNITO_JWKS_URI: JWKS_URI,
       COGNITO_USER_POOL_ID,
       COGNITO_CLIENT_ID,
+      // WS-09 (phase-5-customer-onboarding): packages/auth/src/oauth-env.ts
+      // validates these eagerly at import time, including from
+      // middleware.ts, so every request through the dev server needs them —
+      // not only /auth/sign-in's.
+      COGNITO_HOSTED_UI_URL,
+      COGNITO_REDIRECT_URI,
+      COGNITO_SIGN_OUT_URI,
       AWS_REGION,
       KIOSK_DEVICE_TOKEN,
       DATABASE_URL_POOLED: databaseUrlPooled,

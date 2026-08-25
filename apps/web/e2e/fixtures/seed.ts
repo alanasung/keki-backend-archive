@@ -12,6 +12,7 @@ import {
   households,
   occurrences,
   offerings,
+  orders,
   reservationParticipants,
   reservations,
 } from '@keki/database';
@@ -458,4 +459,50 @@ export async function seedStaffCheckInFixtures(now: Date): Promise<{ startsAt: D
   const occurrence = await seedStaffOfferingAndOccurrence(now);
   await seedStaffReservationAndParticipants();
   return occurrence;
+}
+
+// ---------------------------------------------------------------------------
+// Unprovisioned-fixture reset (WS-09 SC-18/SC-10): customer-onboarding.spec.ts
+// is the first real use of `session.ts`'s `createUnprovisionedContext`, which
+// is hardcoded to `UNPROVISIONED_COGNITO_SUB` — the exact cognitoSub
+// `auth.spec.ts`'s own "unprovisioned session" test depends on staying
+// un-provisioned. Provisioning it is the whole point of that journey, so this
+// deletes whatever customer/household/children/orders/reservations it (or a
+// prior run that crashed mid-test) attached to that cognitoSub, restoring the
+// constant's "no customers row" invariant for the next spec — or the next
+// run — to rely on. Call both before and after the journey: before, in case a
+// previous local run left it provisioned; after, so it doesn't stay
+// provisioned for anything that runs next.
+// ---------------------------------------------------------------------------
+
+export async function resetUnprovisionedFixture(): Promise<void> {
+  const rows = await db
+    .select({ id: customers.id, householdId: customers.householdId })
+    .from(customers)
+    .where(eq(customers.cognitoSub, UNPROVISIONED_COGNITO_SUB))
+    .limit(1);
+  const row = rows[0];
+  if (row === undefined) {
+    return;
+  }
+
+  // FK-safe order: orders cascade-delete their order_line_items (which
+  // otherwise restrict deleting the reservation they reference), and
+  // reservations cascade-delete their reservation_participants (which
+  // otherwise restrict deleting the child they reference) — so both must go
+  // before children.
+  await db.delete(orders).where(eq(orders.householdId, row.householdId));
+  await db.delete(reservations).where(eq(reservations.householdId, row.householdId));
+  await db.delete(children).where(eq(children.householdId, row.householdId));
+
+  // `customers` and `households` reference each other: a customer belongs to a
+  // household, and a household names a primary customer. Deleting the customer
+  // first violates households_primary_customer_id_customers_id_fk, so break
+  // the cycle by clearing the back-reference before either delete.
+  await db
+    .update(households)
+    .set({ primaryCustomerId: null })
+    .where(eq(households.id, row.householdId));
+  await db.delete(customers).where(eq(customers.id, row.id));
+  await db.delete(households).where(eq(households.id, row.householdId));
 }

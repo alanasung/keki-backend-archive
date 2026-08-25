@@ -64,14 +64,16 @@ In CI, these are supplied automatically by the dedicated per-run Neon branch
 
 `apps/web/e2e/` covers the four route groups (`routes.spec.ts`, all eleven
 placeholder routes — SC-04), the authorization gate (`auth.spec.ts`, the full
-`staff/`/`admin/` role matrix — SC-05), the browse-to-checkout ordering
-journey against a stubbed Square client (`ordering.spec.ts` — SC-15, see
-"Square stubbing and ordering fixtures" below), a real Square sandbox
-payment-to-fulfillment run (`sandbox-fulfillment.spec.ts` — SC-20, see
-"Sandbox payment-to-fulfillment" below), the admin catalog journey
-(`admin-catalog.spec.ts` — SC-16, SC-07, see "Admin catalog journey" below),
-and the staff check-in journey (`staff-check-in.spec.ts` — SC-17, see "Staff
-check-in journey" below).
+`staff/`/`admin/` role matrix — SC-05 — plus the `/auth/sign-in` redirect
+shape, SC-01/SC-02), the browse-to-checkout ordering journey against a
+stubbed Square client (`ordering.spec.ts` — SC-15, see "Square stubbing and
+ordering fixtures" below), a real Square sandbox payment-to-fulfillment run
+(`sandbox-fulfillment.spec.ts` — SC-20, see "Sandbox payment-to-fulfillment"
+below), the admin catalog journey (`admin-catalog.spec.ts` — SC-16, SC-07,
+see "Admin catalog journey" below), the staff check-in journey
+(`staff-check-in.spec.ts` — SC-17, see "Staff check-in journey" below), and
+the customer onboarding journey (`customer-onboarding.spec.ts` — SC-18,
+SC-15, SC-10, see "Customer onboarding journey" below).
 
 ```sh
 pnpm test:e2e                        # playwright test
@@ -101,7 +103,16 @@ Instead:
   `COGNITO_ISSUER` / `COGNITO_JWKS_URI` already pointing at the JWKS server
   above, plus a matching `COGNITO_CLIENT_ID`, `KIOSK_DEVICE_TOKEN`, and both
   database URLs. `NODE_EXTRA_CA_CERTS` points the Next.js process at the
-  self-signed certificate so it trusts the JWKS server.
+  self-signed certificate so it trusts the JWKS server. It also sets
+  `COGNITO_HOSTED_UI_URL` / `COGNITO_REDIRECT_URI` / `COGNITO_SIGN_OUT_URI`
+  (`fixtures/test-env.ts`) — `packages/auth/src/oauth-env.ts` validates these
+  eagerly at import time from `middleware.ts`, which every request passes
+  through, so `next dev` cannot boot without them regardless of which spec is
+  running. `NODE_ENV=test` (set alongside the above) does not make `next dev`
+  fall back to `apps/web/.env.development`'s own placeholders for these — a
+  gap that went unnoticed until `phase-5-customer-onboarding`'s WS-09 first
+  ran the full e2e suite after WS-04 added the eager validation, since the
+  build gate does not run Playwright (see "CI" below).
 
 ### Prerequisites
 
@@ -273,6 +284,75 @@ and its participants are reset to "nobody arrived" on every seed call, so a
 prior run whose own undo step didn't complete can't leave the fixture already
 checked in.
 
+### Customer onboarding journey (SC-18, SC-15, SC-10)
+
+`customer-onboarding.spec.ts` is the only spec in the suite that starts from
+`fixtures/session.ts`'s `createUnprovisionedContext` — a signed, verifiable
+id token for a cognitoSub with no `customers` row, exactly what a brand-new
+Cognito account looks like before `/auth/complete-profile` has run. Every
+other `phase-5-customer-onboarding` workstream verifies its own piece in
+isolation — the complete-profile action, `customer-core`'s `addChild` and
+`updateHousehold`, the editable `/account`, `/admin/customers`; this is the
+one spec that proves an account is useless without a child, and a child is
+useless unless the booking flow can see them.
+
+The journey runs as one continuous, serially-ordered sequence of tests
+sharing a single `BrowserContext`, mirroring `admin-catalog.spec.ts` and
+`staff-check-in.spec.ts`:
+
+1. Visit `/book` unprovisioned; assert a redirect to `/auth/complete-profile`
+   — the guard doing its job, and the state this program exists to resolve.
+2. Complete the profile with a first and last name; assert the redirect
+   lands back on `/book`, the page originally requested.
+3. Revisit `/auth/complete-profile` from a second, freshly-signed context for
+   the same (now-provisioned) cognitoSub; assert it redirects straight to
+   `/book` without re-rendering the form, and assert directly against
+   Postgres that exactly one household is linked to the customer — **SC-10**
+   end to end, not only at the action.
+4. Visit `/account`; assert the household exists and lists no children.
+5. Add a child with a distinctive per-run name and a past date of birth;
+   assert they appear in the list.
+6. Attempt to add a second child with tomorrow's date of birth, after
+   removing the date input's `max` attribute (a client-side courtesy, not the
+   guard — see `add-child-form.tsx`'s own comment): assert an error and that
+   no second child was added, confirmed against Postgres. **SC-13** through
+   the whole stack, not merely the browser's native constraint validation
+   (which would otherwise block the click before the form's `onSubmit`, and
+   therefore the server action, ever ran).
+7. Visit `/book`, and assert the newly added child is a selectable option in
+   the class's participant picker. **This is SC-15 and the core of SC-18** —
+   the assertion that connects a household to a purchase.
+8. Book a seat for that child, check out through the Square stub, and follow
+   the resulting order to `/orders/[orderId]`; assert the reservation line
+   carries the child's name.
+
+A separate `describe` block asserts **SC-17** directly, without driving a
+browser: that `fixtures/session.ts` is byte-identical to its state when this
+program started (`git show HEAD:<path>`), that the callback route and the
+fixture both resolve the id-token cookie's name through `ID_TOKEN_COOKIE_NAME`
+rather than a duplicated literal, and that `createRoleContext` still
+authenticates an existing role. `createUnprovisionedContext` is hardcoded to
+one fixed cognitoSub (`UNPROVISIONED_COGNITO_SUB`) — the same one
+`auth.spec.ts`'s own "unprovisioned session" test depends on staying
+unprovisioned — so this journey necessarily provisions it mid-run; a
+`beforeAll`/`afterAll` reset (`fixtures/seed.ts`'s
+`resetUnprovisionedFixture`) deletes whatever it attaches to that cognitoSub,
+restoring the "no `customers` row" invariant both before (in case a prior
+local run crashed mid-test) and after (so nothing that runs next inherits a
+provisioned fixture).
+
+**What this journey deliberately does not cover:** the real Cognito hosted-UI
+sign-up form, the real authorization-code-for-tokens exchange, and Cognito's
+own error pages. `auth.spec.ts`'s `/auth/sign-in` tests assert only the
+redirect's shape (host, `response_type=code`, `code_challenge`, the `state`
+cookie) without following it — CI has no real user pool, and Cognito's hosted
+UI is not this codebase's to drive. The token exchange itself
+(`exchangeCodeForTokens`) is covered by unit tests against a stubbed token
+endpoint (`packages/auth/src/oauth.test.ts`), and `/auth/callback`'s own
+handling of a missing code, a state mismatch, and an exchange failure by
+`apps/web/app/auth/callback/route.test.ts`. This is a documented boundary,
+not an unknown gap.
+
 ### Sandbox payment-to-fulfillment (SC-20)
 
 `sandbox-fulfillment.spec.ts` is the only test in this program that uses the
@@ -401,7 +481,10 @@ outright, not merely reduce coverage quietly. It currently holds
 `integration: recordPaymentFromWebhook`, `integration: syncCatalog`,
 `integration: catalog-admin offerings`, `integration: catalog-admin
 occurrences`, `integration: catalog-admin audit`, `integration: staff-ops
-check-in`, and `integration: staff-ops queries`.
+check-in`, `integration: staff-ops queries`, `integration: customer-core
+children` (`addChild`/`updateHousehold` — this program's first real
+`customer-core` write paths since Phase 1), and `integration: customer-core
+search` (`searchCustomers`, `/admin/customers`'s lookup).
 
 `scripts/assert-integration-tests-ran.ts` parses the Vitest JSON report
 generated in CI step 5 above and fails (non-zero exit) when:

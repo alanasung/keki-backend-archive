@@ -267,6 +267,81 @@ describe('auditIntegrationSuites', () => {
       expect(REQUIRED_INTEGRATION_SUITES).toContain(catalogAdminSuite);
     }
   });
+
+  // phase-5-customer-onboarding WS-09 spec test 18: naming the customer-core
+  // suites explicitly means deleting the children suite fails CI outright —
+  // addChild/updateHousehold are this program's first real customer-core
+  // write paths since Phase 1, and easy to lose coverage on quietly without
+  // this gate naming it.
+  it('fails when the customer-core children suite is absent entirely', () => {
+    const assertions = passingBaseline().filter(
+      (assertion) => assertion.ancestorTitles[0] !== 'integration: customer-core children',
+    );
+
+    const failures = auditIntegrationSuites(reportWith(assertions));
+
+    expect(
+      failures.some(
+        (failure) => failure.includes('integration: customer-core children') && failure.includes('not found'),
+      ),
+    ).toBe(true);
+  });
+
+  it('fails when the customer-core search suite is absent entirely', () => {
+    const assertions = passingBaseline().filter(
+      (assertion) => assertion.ancestorTitles[0] !== 'integration: customer-core search',
+    );
+
+    const failures = auditIntegrationSuites(reportWith(assertions));
+
+    expect(
+      failures.some(
+        (failure) => failure.includes('integration: customer-core search') && failure.includes('not found'),
+      ),
+    ).toBe(true);
+  });
+
+  // Test 19: passes when both customer-core suites ran with a non-zero count.
+  it('passes when the customer-core children and search suites both executed', () => {
+    const failures = auditIntegrationSuites(reportWith(passingBaseline()));
+
+    for (const customerCoreSuite of ['integration: customer-core children', 'integration: customer-core search']) {
+      expect(REQUIRED_INTEGRATION_SUITES).toContain(customerCoreSuite);
+      expect(failures.some((failure) => failure.includes(customerCoreSuite))).toBe(false);
+    }
+  });
+
+  // The pre-existing zero-executed-tests behavior is unchanged by adding the
+  // customer-core suites above.
+  it('still fails a zero-count integration suite unrelated to customer-core', () => {
+    const assertions = passingBaseline().map((assertion) =>
+      assertion.ancestorTitles[0] === 'integration: staff-ops check-in'
+        ? { ancestorTitles: assertion.ancestorTitles, status: 'skipped' }
+        : assertion,
+    );
+
+    const failures = auditIntegrationSuites(reportWith(assertions));
+
+    expect(
+      failures.some(
+        (failure) => failure.includes('integration: staff-ops check-in') && failure.includes('zero executed tests'),
+      ),
+    ).toBe(true);
+  });
+
+  // Test 20: this program's additions did not displace the Phase 3 or Phase
+  // 4 suites.
+  it('still requires the catalog-admin and staff-ops suites from earlier programs', () => {
+    for (const earlierSuite of [
+      'integration: catalog-admin offerings',
+      'integration: catalog-admin occurrences',
+      'integration: catalog-admin audit',
+      'integration: staff-ops check-in',
+      'integration: staff-ops queries',
+    ]) {
+      expect(REQUIRED_INTEGRATION_SUITES).toContain(earlierSuite);
+    }
+  });
 });
 
 // Process-level smoke tests: the unit tests above prove the audit logic is

@@ -32,6 +32,8 @@ export const REQUIRED_INTEGRATION_SUITES = [
   'integration: catalog-admin audit', // phase-3-admin-catalog WS-04 audit-in-transaction guarantee (SC-11)
   'integration: staff-ops check-in', // phase-4-staff-surfaces WS-03 check-in/undo/no-show + SC-11's rollback guarantee
   'integration: staff-ops queries', // phase-4-staff-surfaces WS-03 today/roster/occupancy roll-up queries
+  'integration: customer-core children', // phase-5-customer-onboarding WS-06 addChild/updateHousehold
+  'integration: customer-core search', // phase-5-customer-onboarding WS-08 searchCustomers
 ] as const;
 
 // Suites gated on a live dependency this CI job deliberately does not

@@ -17,6 +17,18 @@ export const BASE_URL = process.env['PLAYWRIGHT_BASE_URL'] ?? 'http://localhost:
 // test IS the origin the customer returns to.
 export const APP_BASE_URL = BASE_URL;
 
+// `packages/auth/src/oauth-env.ts` validates these eagerly at import time —
+// including from `middleware.ts`, which every request (not just
+// `/auth/sign-in`) passes through — so the dev server this suite drives
+// cannot boot without them, regardless of which spec is running.
+// `COGNITO_HOSTED_UI_URL`'s host does not need to resolve: auth.spec.ts's
+// `/auth/sign-in` tests assert the redirect's shape without following it
+// (docs/testing.md's "Customer onboarding journey" — CI has no real user
+// pool, and Cognito's hosted UI is not this codebase's to drive).
+export const COGNITO_HOSTED_UI_URL = 'https://e2e-test.auth.us-east-1.amazoncognito.com';
+export const COGNITO_REDIRECT_URI = `${BASE_URL}/auth/callback`;
+export const COGNITO_SIGN_OUT_URI = `${BASE_URL}/auth/sign-out/complete`;
+
 // Signs the `keki_cart` cookie (apps/web/app/(customer)/cart/cart-cookie.ts).
 // Any string works locally; this fixed value lets ordering.spec.ts's
 // price-tamper test compute a validly-signed forged cookie itself, using the

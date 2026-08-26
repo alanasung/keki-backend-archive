@@ -1,0 +1,76 @@
+{"timestamp":"2026-08-24T15:13:42.464Z","event":"build-start","programId":"phase-5-customer-onboarding","plan":[{"id":"WS-01","name":"Contracts: profile, child, and household schemas; OAuth handshake types","taskFile":"tasks/phase-5-customer-onboarding/WS-01-contracts-onboarding-types.md","action":"skip","reason":"already complete"},{"id":"WS-02","name":"Infrastructure: Cognito OAuth client configuration and hosted-UI outputs","taskFile":"tasks/phase-5-customer-onboarding/WS-02-cognito-oauth-infra.md","action":"skip","reason":"already complete"},{"id":"WS-03","name":"@keki/auth: authorization URL, code exchange, refresh, sign-out","taskFile":"tasks/phase-5-customer-onboarding/WS-03-auth-handshake.md","action":"skip","reason":"already complete"},{"id":"WS-04","name":"/auth/sign-in, /auth/callback, and /auth/sign-out routes","taskFile":"tasks/phase-5-customer-onboarding/WS-04-auth-routes.md","action":"skip","reason":"already complete"},{"id":"WS-05","name":"/auth/complete-profile: first-time profile provisioning","taskFile":"tasks/phase-5-customer-onboarding/WS-05-complete-profile.md","action":"run"},{"id":"WS-06","name":"customer-core: real addChild and updateHousehold","taskFile":"tasks/phase-5-customer-onboarding/WS-06-customer-write-paths.md","action":"run"},{"id":"WS-07","name":"/account: add a child and rename the household","taskFile":"tasks/phase-5-customer-onboarding/WS-07-account-surface.md","action":"run"},{"id":"WS-08","name":"/admin/customers: staff customer lookup","taskFile":"tasks/phase-5-customer-onboarding/WS-08-admin-customers.md","action":"run"},{"id":"WS-09","name":"Tests, e2e coverage, and documentation","taskFile":"tasks/phase-5-customer-onboarding/WS-09-tests-and-docs.md","action":"run"}],"agentCommand":"claude","verify":["workspace","typecheck","lint","build","test"],"commit":true}
+{"timestamp":"2026-08-24T15:13:42.465Z","event":"workstream-skipped","id":"WS-01","reason":"already complete"}
+{"timestamp":"2026-08-24T15:13:42.465Z","event":"workstream-skipped","id":"WS-02","reason":"already complete"}
+{"timestamp":"2026-08-24T15:13:42.465Z","event":"workstream-skipped","id":"WS-03","reason":"already complete"}
+{"timestamp":"2026-08-24T15:13:42.465Z","event":"workstream-skipped","id":"WS-04","reason":"already complete"}
+{"timestamp":"2026-08-24T15:13:42.465Z","event":"workstream-start","id":"WS-05","name":"/auth/complete-profile: first-time profile provisioning"}
+{"timestamp":"2026-08-24T15:13:42.492Z","event":"agent-start","id":"WS-05","attempt":1,"promptBytes":1348}
+{"timestamp":"2026-08-24T17:02:48.832Z","event":"agent-exit","id":"WS-05","attempt":1,"exitCode":1}
+{"timestamp":"2026-08-24T17:02:48.875Z","event":"agent-start","id":"WS-05","attempt":2,"promptBytes":693}
+{"timestamp":"2026-08-24T17:39:08.093Z","event":"agent-exit","id":"WS-05","attempt":2,"exitCode":0}
+{"timestamp":"2026-08-24T17:39:08.128Z","event":"no-op-accepted","id":"WS-05","attempt":2,"kind":"prior-work-present"}
+{"timestamp":"2026-08-24T17:39:08.128Z","event":"verify-start","id":"WS-05","attempt":2,"name":"workspace","run":1}
+{"timestamp":"2026-08-24T17:39:08.131Z","event":"verify-result","id":"WS-05","attempt":2,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T17:39:08.131Z","event":"verify-start","id":"WS-05","attempt":2,"name":"typecheck","run":1}
+{"timestamp":"2026-08-24T17:39:19.440Z","event":"verify-result","id":"WS-05","attempt":2,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T17:39:19.440Z","event":"verify-start","id":"WS-05","attempt":2,"name":"lint","run":1}
+{"timestamp":"2026-08-24T17:39:38.581Z","event":"verify-result","id":"WS-05","attempt":2,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T17:39:38.582Z","event":"verify-start","id":"WS-05","attempt":2,"name":"build","run":1}
+{"timestamp":"2026-08-24T17:40:02.226Z","event":"verify-result","id":"WS-05","attempt":2,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T17:40:02.227Z","event":"verify-start","id":"WS-05","attempt":2,"name":"test","run":1}
+{"timestamp":"2026-08-24T17:44:30.912Z","event":"verify-result","id":"WS-05","attempt":2,"name":"test","command":"pnpm test:isolated-audit","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T17:44:46.125Z","event":"test-critique","id":"WS-05","findings":[]}
+{"timestamp":"2026-08-24T17:44:46.209Z","event":"commit","id":"WS-05","sha":"e63b547"}
+{"timestamp":"2026-08-24T17:44:46.210Z","event":"workstream-complete","id":"WS-05","attempts":2}
+{"timestamp":"2026-08-24T17:44:46.210Z","event":"workstream-start","id":"WS-06","name":"customer-core: real addChild and updateHousehold"}
+{"timestamp":"2026-08-24T17:44:46.256Z","event":"agent-start","id":"WS-06","attempt":1,"promptBytes":1345}
+{"timestamp":"2026-08-24T17:58:04.258Z","event":"agent-exit","id":"WS-06","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-24T17:58:04.302Z","event":"verify-start","id":"WS-06","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-24T17:58:04.305Z","event":"verify-result","id":"WS-06","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T17:58:04.305Z","event":"verify-start","id":"WS-06","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-24T17:58:13.973Z","event":"verify-result","id":"WS-06","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T17:58:13.973Z","event":"verify-start","id":"WS-06","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-24T17:58:30.100Z","event":"verify-result","id":"WS-06","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T17:58:30.101Z","event":"verify-start","id":"WS-06","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-24T17:58:51.353Z","event":"verify-result","id":"WS-06","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T17:58:51.353Z","event":"verify-start","id":"WS-06","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-24T18:03:24.390Z","event":"verify-result","id":"WS-06","attempt":1,"name":"test","command":"pnpm test:isolated-audit","exitCode":1,"run":1}
+{"timestamp":"2026-08-24T18:03:24.390Z","event":"verify-start","id":"WS-06","attempt":1,"name":"test","run":2}
+{"timestamp":"2026-08-24T18:07:59.329Z","event":"verify-result","id":"WS-06","attempt":1,"name":"test","command":"pnpm test:isolated-audit","exitCode":0,"run":2}
+{"timestamp":"2026-08-24T18:08:14.468Z","event":"test-critique","id":"WS-06","findings":[]}
+{"timestamp":"2026-08-24T18:08:14.562Z","event":"commit","id":"WS-06","sha":"6ba1c70"}
+{"timestamp":"2026-08-24T18:08:14.563Z","event":"workstream-complete","id":"WS-06","attempts":1}
+{"timestamp":"2026-08-24T18:08:14.563Z","event":"workstream-start","id":"WS-07","name":"/account: add a child and rename the household"}
+{"timestamp":"2026-08-24T18:08:14.630Z","event":"agent-start","id":"WS-07","attempt":1,"promptBytes":1338}
+{"timestamp":"2026-08-24T18:50:11.120Z","event":"agent-exit","id":"WS-07","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-24T18:50:11.179Z","event":"verify-start","id":"WS-07","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-24T18:50:11.182Z","event":"verify-result","id":"WS-07","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T18:50:11.182Z","event":"verify-start","id":"WS-07","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-24T18:50:21.663Z","event":"verify-result","id":"WS-07","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T18:50:21.664Z","event":"verify-start","id":"WS-07","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-24T18:50:38.373Z","event":"verify-result","id":"WS-07","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T18:50:38.374Z","event":"verify-start","id":"WS-07","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-24T18:51:01.669Z","event":"verify-result","id":"WS-07","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T18:51:01.669Z","event":"verify-start","id":"WS-07","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-24T18:55:37.864Z","event":"verify-result","id":"WS-07","attempt":1,"name":"test","command":"pnpm test:isolated-audit","exitCode":0,"run":1}
+{"timestamp":"2026-08-24T18:55:56.735Z","event":"test-critique","id":"WS-07","findings":[]}
+{"timestamp":"2026-08-24T18:55:56.815Z","event":"commit","id":"WS-07","sha":"7016878"}
+{"timestamp":"2026-08-24T18:55:56.815Z","event":"workstream-complete","id":"WS-07","attempts":1}
+{"timestamp":"2026-08-24T18:55:56.816Z","event":"workstream-start","id":"WS-08","name":"/admin/customers: staff customer lookup"}
+{"timestamp":"2026-08-24T18:55:56.861Z","event":"agent-start","id":"WS-08","attempt":1,"promptBytes":1331}
+{"timestamp":"2026-08-25T01:59:34.858Z","event":"agent-exit","id":"WS-08","attempt":1,"exitCode":0}
+{"timestamp":"2026-08-25T01:59:34.904Z","event":"verify-start","id":"WS-08","attempt":1,"name":"workspace","run":1}
+{"timestamp":"2026-08-25T01:59:34.907Z","event":"verify-result","id":"WS-08","attempt":1,"name":"workspace","command":"test -f pnpm-workspace.yaml && test -f package.json","exitCode":0,"run":1}
+{"timestamp":"2026-08-25T01:59:34.907Z","event":"verify-start","id":"WS-08","attempt":1,"name":"typecheck","run":1}
+{"timestamp":"2026-08-25T01:59:46.869Z","event":"verify-result","id":"WS-08","attempt":1,"name":"typecheck","command":"pnpm -r typecheck","exitCode":0,"run":1}
+{"timestamp":"2026-08-25T01:59:46.870Z","event":"verify-start","id":"WS-08","attempt":1,"name":"lint","run":1}
+{"timestamp":"2026-08-25T02:00:04.760Z","event":"verify-result","id":"WS-08","attempt":1,"name":"lint","command":"pnpm -r lint","exitCode":0,"run":1}
+{"timestamp":"2026-08-25T02:00:04.761Z","event":"verify-start","id":"WS-08","attempt":1,"name":"build","run":1}
+{"timestamp":"2026-08-25T02:00:28.944Z","event":"verify-result","id":"WS-08","attempt":1,"name":"build","command":"pnpm -r build","exitCode":0,"run":1}
+{"timestamp":"2026-08-25T02:00:28.944Z","event":"verify-start","id":"WS-08","attempt":1,"name":"test","run":1}
+{"timestamp":"2026-08-25T02:05:33.612Z","event":"verify-result","id":"WS-08","attempt":1,"name":"test","command":"pnpm test:isolated-audit","exitCode":0,"run":1}
+{"timestamp":"2026-08-25T02:05:52.624Z","event":"test-critique","id":"WS-08","findings":[]}
+{"timestamp":"2026-08-25T02:05:52.710Z","event":"commit","id":"WS-08","sha":"96d363f"}
+{"timestamp":"2026-08-25T02:05:52.710Z","event":"workstream-complete","id":"WS-08","attempts":1}
+{"timestamp":"2026-08-25T02:05:52.710Z","event":"workstream-start","id":"WS-09","name":"Tests, e2e coverage, and documentation"}
+{"timestamp":"2026-08-25T02:05:52.762Z","event":"agent-start","id":"WS-09","attempt":1,"promptBytes":1329}

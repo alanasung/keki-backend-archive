@@ -33,6 +33,16 @@ env:
   COGNITO_CLIENT_ID: e2e-test-client-id
   AWS_REGION: us-west-2
   KIOSK_DEVICE_TOKEN: e2e-test-kiosk-device-token
+  # phase-5-customer-onboarding: @keki/auth's OAuth config validates eagerly at
+  # module load, the same way env.ts already does, so `next build` fails while
+  # collecting page data for /auth/callback if these are absent — before any
+  # test runs. Dummy values, like the pool and client ids above: CI never
+  # reaches a real Cognito, and the e2e suite signs its own tokens against a
+  # local JWKS server. The redirect URI must still parse as a URL and, outside
+  # production, may be http for localhost.
+  COGNITO_HOSTED_UI_URL: https://keki-e2e.auth.us-west-2.amazoncognito.com
+  COGNITO_REDIRECT_URI: http://localhost:3000/auth/callback
+  COGNITO_SIGN_OUT_URI: http://localhost:3000/auth/sign-out/complete
 
 jobs:
   ci:

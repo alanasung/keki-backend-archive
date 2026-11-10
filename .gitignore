@@ -26,6 +26,13 @@ next-env.d.ts
 # Env
 .env
 .env.local
+# Every dotenv variant, anywhere in the tree. apps/web/.env.production and
+# .env.development were committed from the phase-1 scaffold onward with real
+# Neon connection strings in them; they have since been purged from history.
+# A bare `.env` pattern did not match them, which is how they slipped in.
+.env.*
+!.env.example
+!.env.*.example
 
 # Test artifacts
 coverage/
